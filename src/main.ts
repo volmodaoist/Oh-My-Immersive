@@ -158,7 +158,6 @@ interface Strings {
   inkConnect: string;
   inkCopy: string;
   inkCopied: string;
-  inkLocal: string;
   inkPort: string;
   inkPortDesc: string;
   inkPortBusy: string;
@@ -175,7 +174,6 @@ const EN: Strings = {
   inkConnect: "Remote ink connection",
   inkCopy: "Copy browser address",
   inkCopied: "Browser address copied",
-  inkLocal: "Open on this computer",
   inkPort: "Remote ink port",
   inkPortDesc: "Use an integer from 1024 to 65535. Changes take effect the next time the service starts.",
   inkPortBusy: "This port is already in use. Choose another remote ink port in settings.",
@@ -280,7 +278,6 @@ const ZH: Strings = {
   inkConnect: "远程书写连接",
   inkCopy: "复制浏览器地址",
   inkCopied: "已复制浏览器地址",
-  inkLocal: "在本机浏览器打开",
   inkPort: "远程书写服务端口",
   inkPortDesc: "输入 1024～65535 之间的整数。修改后在下次启动服务时生效。",
   inkPortBusy: "该端口已被占用，请在设置中更换远程书写服务端口。",
@@ -614,7 +611,6 @@ export default class ImmersiveFolderPlugin extends Plugin {
     modal.contentEl.createEl("p", { text: t.inkIntro });
     const address = connection.lan[0] ?? connection.local;
     for (const url of connection.lan) modal.contentEl.createEl("p").createEl("code", { text: url });
-    modal.contentEl.createEl("a", { text: t.inkLocal, attr: { href: connection.local, target: "_blank", rel: "noopener" } });
     const actions = modal.contentEl.createDiv({ cls: "immersive-folder-ink-actions" });
     actions.createEl("button", { text: t.inkCopy, cls: "mod-cta" }).addEventListener("click", () => {
       void navigator.clipboard.writeText(address).then(() => { new Notice(t.inkCopied); }).catch(() => { new Notice(address, 15000); });
