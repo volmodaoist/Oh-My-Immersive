@@ -78,6 +78,8 @@ Obsidian window as a background with a drawing layer on top. You can test
 with a mouse in another browser: hold the left button and drag. Pencil uses
 pressure; mouse strokes use a fixed width. Touch does not draw or finish an
 active stroke. Pen, highlighter, stroke eraser, undo and clear are available.
+The drawing surface suppresses native long-press selection, image dragging and
+context menus so they do not interrupt Pencil input.
 While the service runs, the note header also shows an eraser icon for **Clear ink**. Clearing from either end clears ink on both ends.
 
 Samples stream in batches about every 20ms, so the desktop sees the stroke
