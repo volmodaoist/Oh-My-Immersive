@@ -6,8 +6,8 @@ An Obsidian plugin. While you are working in a folder, one click narrows the
 file explorer to that folder's notes and covers everything else up until you
 switch it back.
 
-It also lets you drag folders into the order you want, so you no longer have to
-name them `01_Inbox`, `02_Projects` just to make them line up.
+It also lets you drag files and folders into the order you want, so you no
+longer have to add numeric prefixes just to make them line up.
 
 ![the file explorer with the Clippings folder readable and every other row reduced to skeleton bars](docs/screenshot.png)
 
@@ -34,29 +34,37 @@ nothing to select.
 
 The state is remembered across restarts.
 
-### Arranging the folders
+### Arranging files and folders
 
-Press the up-and-down arrow button at the top of the file explorer. Every
-folder lifts a little and grows a handle, and from there you drag folders into
-the order you want. Changes are saved as you make them, and pressing the button
-again — or Escape — leaves the mode.
+Click the up-and-down arrow button at the top of the file explorer. Files of
+any type and folders grow handles, and you can drag them into the order you
+want. Changes are saved as you make them. Press the button again or Escape
+to leave the mode.
+You can also right-click any folder and choose **Reorder** to enter the same mode.
 
-![with folder arrange mode on, dragging a folder changes where it sits among its sibling folders](docs/arrange.gif)
+![dragging a folder changes its position among sibling folders](docs/arrange.gif)
 
-You can only reorder among siblings. A folder moves within the folder it lives
-in and cannot be dragged out to another level, which is what keeps reordering
-and moving apart.
+Folders stay before files. Within one directory, reorder folders among
+folders and files among files, including different file types. You cannot
+reorder across directories or drag a file into the folder group.
 
-Only folders take part. File order is still Obsidian's to decide, so whatever
-you picked in the sort menu, by name or by date, goes on working as before.
+Once you drag an item, that directory keeps the saved order of both groups,
+even when you change Obsidian's sort menu or restart. Other directories still
+follow Obsidian's sort menu. New or incoming items appear at the end of their
+own group, in Obsidian's order, until you arrange them.
 
-This is a mode of the plugin's own, and inside it you do one thing: set the
-order of folders. Leave the mode and Obsidian's own dragging behaves exactly as
-it always did, moving files and folders wherever you drop them. The two stay
-out of each other's way.
+To restore a directory's default order, leave arrange mode and right-click a
+file or folder. Choose **Restore default order** for the directory named in
+the menu. On a folder, you may see entries for its contents and its parent,
+including `/` for the vault root. This only clears that directory's order;
+its subdirectories keep theirs. Settings also offers **Restore default order
+everywhere** to clear all manual arrangements.
 
-The plugin records the order and nothing more. It renames nothing, moves no
-files, and writes nothing else into your vault.
+Existing folder-only arrangements are cleared once when upgrading to this
+version.
+
+Leave arrange mode and Obsidian's ordinary dragging works as before. The
+plugin only saves display order; it does not rename or move files.
 
 ### Settings
 
@@ -80,6 +88,7 @@ bars and nothing else. On by default.
 except the one you are in. Less to scroll past, and it stops the bars from
 giving away how many files the other folders hold. Whatever was open is put
 back when you leave immersive mode. On by default.
+Folders opened during immersive mode are collapsed again when you leave.
 
 **Keep everything inside this folder readable** — the cover spares the folder
 you are in and whatever sits directly in it. Switch this on and it spares the

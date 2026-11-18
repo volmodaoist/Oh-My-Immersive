@@ -1,30 +1,27 @@
-/* The custom order: which subfolders of a folder come in which order, and
- * everything that keeps that record true as the vault changes underneath it.
- *
- * Three decisions shape this file.
- *
- * Only folders take part. A record says nothing about files, and apply() puts
- * every file row back at the exact index Obsidian's own sorting gave it — so
- * whichever sort the user picked keeps the great majority of the tree, and
- * switching it always produces a visible change. It also means a folder full
- * of notes and nothing else can never acquire a record at all, which is what
- * keeps a daily-notes folder out of this entirely.
- *
- * Only folders that have actually been dragged get an entry. Everything else
- * is absent, and absent means "let Obsidian sort it" — so a vault where the
- * feature was never used stores nothing, and the sort patch is a pass-through
- * for every folder but the ones the user arranged by hand.
- *
- * Entries hold child *names*, not paths. Within one folder a name is unique,
- * it is shorter to store, and moving a folder carries its children's order
- * along without touching a single entry. The cost is that renames have to be
- * followed, which is what the vault handlers below are for.
+/* Each arranged directory records its children by full name, including file
+ * extensions. Folders stay before files, and each group keeps its own manual
+ * order. Directories without a record pass through to Obsidian's sorter.
+ * Moving a directory carries its children's order along; renames and deletes
+ * keep the record in sync with the vault.
  */
 
 import { TAbstractFile, TFolder } from "obsidian";
-import { FileTreeItem } from "./explorer-api";
+import type { FileTreeItem } from "./explorer-api";
 
 export type Orders = Record<string, string[]>;
+export const ORDER_VERSION = 2;
+
+/* Shared by drop-target selection and the final commit, where an item may
+   have been moved or deleted since the drag started. */
+export function canReorder(moving: TAbstractFile, target: TAbstractFile): boolean {
+  return (
+    moving.parent !== null &&
+    target.parent !== null &&
+    moving.path !== target.path &&
+    parentKey(moving.path) === parentKey(target.path) &&
+    (moving instanceof TFolder) === (target instanceof TFolder)
+  );
+}
 
 /* Where a folder's own record lives. Obsidian calls the vault root "/", and
    that is used verbatim as a key rather than translated to "" — one less
@@ -57,56 +54,33 @@ export class OrderStore {
     return this.host.settings.orders;
   }
 
-  /* The sort patch's whole job. A folder with no record is handed straight
-     back, which is what keeps this a shuffle over Obsidian's own sorting
-     rather than a replacement for it: whatever the user picked in the sort
-     menu still decides everything this plugin has no opinion about.
-   *
-     Only the subfolder rows move, and they move *between the positions they
-     already occupy* — every other index in the array comes back holding the
-     item Obsidian put there. Rebuilding the result as "folders, then files"
-     would have been shorter and would have quietly baked in an assumption
-     about how the explorer groups its rows; this way the grouping, whatever
-     it turns out to be, survives untouched. */
+  /* Manual order wins only in arranged directories. New children go after
+     the recorded children of their own group, keeping Obsidian's relative
+     order among themselves. Sort a copy so the native result stays intact. */
   apply(folder: TFolder, sorted: FileTreeItem[]): FileTreeItem[] {
     const order = this.orders[folder.path];
     if (!order || order.length === 0) return sorted;
-
-    const slots: number[] = [];
-    const folders: FileTreeItem[] = [];
-    sorted.forEach((item, index) => {
-      if (item.file instanceof TFolder) {
-        slots.push(index);
-        folders.push(item);
-      }
-    });
-    /* One subfolder has only one place it can be. */
-    if (folders.length < 2) return sorted;
 
     /* A Map rather than repeated indexOf: this runs on every redraw of every
        folder, and indexOf would make it quadratic in the folder's size. */
     const rank = new Map<string, number>();
     order.forEach((name, index) => rank.set(name, index));
 
-    folders.sort((a, b) => {
+    return sorted.slice().sort((a, b) => {
+      const aFolder = a.file instanceof TFolder;
+      const bFolder = b.file instanceof TFolder;
+      if (aFolder !== bFolder) return aFolder ? -1 : 1;
+
       const ra = rank.get(a.file.name);
       const rb = rank.get(b.file.name);
 
-      /* Subfolders the record has never seen — created since, or moved in
-         from elsewhere — sink below the arranged ones. Returning 0 between
-         two of them hands the decision back to Array.sort's stability, so
-         they keep whatever relative order Obsidian just gave them instead of
-         landing in an arbitrary one. */
+      /* Stable sorting preserves the native order of unrecorded children. */
       if (ra === undefined || rb === undefined) {
         if (ra === undefined && rb === undefined) return 0;
         return ra === undefined ? 1 : -1;
       }
       return ra - rb;
     });
-
-    const out = sorted.slice();
-    slots.forEach((slot, index) => (out[slot] = folders[index]));
-    return out;
   }
 
   /* Called before every drag, not just the first one: the record is re-frozen
@@ -114,8 +88,8 @@ export class OrderStore {
      rearranges the list the user is actually looking at.
    *
      Re-freezing rather than capturing once is what keeps move() total. A
-     subfolder created since the last drag is absent from the record and sits
-     at the bottom of the folder block; if it stayed absent, dragging it — or
+     child created since the last drag is absent from the record and sits
+     at the bottom of its group; if it stayed absent, dragging it — or
      dropping onto it — would be a move between two names the record does not
      contain, and would have to either guess or silently do nothing. */
   capture(folderPath: string, names: string[]): void {
@@ -125,9 +99,8 @@ export class OrderStore {
     this.orders[folderPath] = names.slice();
   }
 
-  /* Move `moving` to sit before or after `target`. Both are subfolder names
-     of the same folder — this plugin never reorders across folders, and never
-     touches a file. */
+  /* Move between child names. The host checks that they share a directory
+     and a group before calling this; no filesystem operation is involved. */
   move(
     folderPath: string,
     moving: string,
@@ -155,9 +128,19 @@ export class OrderStore {
 
   /* ── Keeping the record true ─────────────────────────────────────────── */
 
-  /* Both handlers report whether they actually changed anything, so the
-     plugin can skip writing data.json for the common case: a record holds
-     folder names only, and most of what happens in a vault is files. */
+  reset(folderPath: string): boolean {
+    if (!Object.prototype.hasOwnProperty.call(this.orders, folderPath)) return false;
+    delete this.orders[folderPath];
+    return true;
+  }
+
+  resetAll(): boolean {
+    if (Object.keys(this.orders).length === 0) return false;
+    this.host.settings.orders = {};
+    return true;
+  }
+
+  /* Report changes so events in unarranged directories do not trigger saves. */
 
   onDelete(file: TAbstractFile): boolean {
     const removed = this.removeFrom(parentKey(file.path), nameOf(file.path));
@@ -184,9 +167,9 @@ export class OrderStore {
       }
     } else {
       /* Moved somewhere else. It leaves the old parent's record and does not
-         join the new one's: a folder arriving from elsewhere is in exactly
+         join the new one's: a child arriving from elsewhere is in exactly
          the position of one that was just created, and apply() sinks both to
-         the bottom of the folder block until the user says otherwise. */
+         the bottom of its group until the user says otherwise. */
       changed = this.removeFrom(oldParent, oldName);
     }
 

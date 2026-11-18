@@ -459,10 +459,7 @@ body {
   }
 }
 
-/* Keyed off the attribute the drag code puts on the rows it accepts, rather
-   than off Obsidian's own .nav-folder-title: the two say the same thing today,
-   but only one of them is ours to rely on. Folders drift, files do not — so
-   "files are not part of this" is answered before anyone tries to drag one. */
+/* Every accepted file or folder row carries the attribute set by DragSort. */
 .immersive-folder-sorting .tree-item-self[data-immersive-folder-hint] {
   animation: immersive-folder-drift 1.2s ease-in-out infinite;
   cursor: grab;
@@ -482,11 +479,7 @@ body {
   animation-delay: -0.8s;
 }
 
-/* The files, while the mode is on. Dimmed so the folders read as the layer
-   being worked on, and inert so they do not light up under the pointer —
-   a row that highlights on hover is promising something it will not do. The
-   click and context-menu suppression in dnd.ts covers the same ground from
-   the other side; this is what makes it visible. */
+/* Rows that do not represent an arrangeable vault item stay inert. */
 .immersive-folder-sorting
   .tree-item-self:not([data-immersive-folder-hint]) {
   opacity: var(--immersive-folder-dim);

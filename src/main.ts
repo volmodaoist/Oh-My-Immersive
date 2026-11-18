@@ -7,6 +7,7 @@ import {
   PluginSettingTab,
   SettingDefinitionItem,
   setIcon,
+  TAbstractFile,
   TFolder,
 } from "obsidian";
 
@@ -21,7 +22,7 @@ import {
   sortView,
   visibleRowOrder,
 } from "./explorer-api";
-import { Orders, OrderStore } from "./order";
+import { canReorder, ORDER_VERSION, Orders, OrderStore } from "./order";
 import { animateReorder, DragSort } from "./dnd";
 
 type Language = "auto" | "en" | "zh";
@@ -52,10 +53,9 @@ interface ImmersiveFolderSettings {
   /* Which folders were open before the tree was folded down, so leaving
      immersive mode can hand the explorer back the way it was found. */
   expandedBefore: string[];
-  /* Keyed by folder path, holding that folder's *subfolders* in the order the
-     user arranged them. Only folders that have been dragged in appear here,
-     and files never appear at all — see order.ts. */
+  /* Full child names in arranged directories, with folders before files. */
   orders: Orders;
+  orderVersion: number;
 }
 
 /* app.commands is real but absent from the public typings. */
@@ -92,6 +92,7 @@ const DEFAULT_SETTINGS: ImmersiveFolderSettings = {
   revealAncestors: false,
   expandedBefore: [],
   orders: {},
+  orderVersion: ORDER_VERSION,
 };
 
 
@@ -129,6 +130,11 @@ interface Strings {
   sortModeOn: string;
   sortModeOff: string;
   sortCommand: string;
+  reorder: string;
+  resetOrder: string;
+  resetAllOrders: string;
+  resetAllOrdersDesc: string;
+  ordersReset: string;
   dragHint: string;
   /* The line above the tree while arranging; `{key}` is drawn as the key. */
   sortExitHint: string;
@@ -163,7 +169,7 @@ const EN: Strings = {
     "feature. Whatever you hide is still on the command palette.",
   toolbarBoth: "Show both",
   toolbarImmersive: "Immersive folder only",
-  toolbarSort: "Folder arrange only",
+  toolbarSort: "Arrange only",
   toolbarNone: "Hide both",
   hotkeyName: "Set a hotkey for what you hid",
   hotkeyDesc:
@@ -198,30 +204,37 @@ const EN: Strings = {
     "Immersive folder is a visual cover, not encryption. It is built for " +
     "screen sharing, recordings and the person sitting next to you — the " +
     "names are still in the page for anyone with developer tools.",
-  dragName: "Arranging the folders by hand",
+  dragName: "Arranging files and folders by hand",
   dragIntro:
     "The up-and-down arrow button at the top of the file explorer switches " +
-    "on folder arrange mode; the same button or Escape leaves it again. " +
-    "Every folder grows a handle and starts to drift, and " +
-    "dragging one sets where it sits among its sibling folders — hold one " +
-    "and only the folders that can take it keep moving, while the rest dim. " +
-    "Files are left out of it entirely: they grow no handle and stay exactly " +
-    "where the sort menu put them, so switching between name and date still " +
-    "does what it always did. Ordinary dragging is untouched too — switch " +
+    "on arrange mode; the same button or Escape leaves it again. " +
+    "Files of any type and folders grow handles. Folders stay above files, " +
+    "and dragging only changes the order among siblings of the same kind. " +
+    "Arranged directories keep their saved order; other directories follow " +
+    "Obsidian's sort menu. New items appear at the end of their own group. " +
+    "Leave arrange mode and right-click a file or folder to restore the " +
+    "default order in the directory named in the menu. Ordinary dragging " +
+    "is untouched — switch " +
     "the mode off and moving a note into another folder works as before. " +
     "This only ever reorders, and never moves anything. Immersive mode and " +
     "arrange mode take turns: leave one to open the other.",
-  sortModeOff: "Arrange the folders",
+  sortModeOff: "Arrange files and folders",
   sortModeOn: "Done arranging",
-  sortCommand: "Toggle folder arrange mode",
+  sortCommand: "Toggle file and folder arrange mode",
+  reorder: "Reorder",
+  resetOrder: "Restore default order",
+  resetAllOrders: "Restore default order everywhere",
+  resetAllOrdersDesc:
+    "Clear all manual arrangements and use Obsidian's sort menu in every directory.",
+  ordersReset: "Default order restored",
   dragHint: "Drag to reorder",
   sortExitHint: "Press {key} when you are done",
   needFile: "Open a note first",
-  blockedBySort: "Leave folder arrange mode first",
+  blockedBySort: "Leave arrange mode first",
   blockedByCover: "Leave immersive folder first",
   sortUnavailable:
     "This build of Obsidian does not expose the file explorer's sorting, so " +
-    "the folders cannot be arranged.",
+    "files and folders cannot be arranged.",
 };
 
 const ZH: Strings = {
@@ -244,7 +257,7 @@ const ZH: Strings = {
     "藏起来的那个，命令面板里照样能用。",
   toolbarBoth: "两个都显示",
   toolbarImmersive: "只显示沉浸模式",
-  toolbarSort: "只显示调整文件夹顺序",
+  toolbarSort: "只显示调整顺序",
   toolbarNone: "两个都不显示",
   hotkeyName: "给藏起来的功能设置快捷键",
   hotkeyDesc:
@@ -272,26 +285,32 @@ const ZH: Strings = {
   disclaimer:
     "沉浸模式是视觉遮挡，不是加密。它是为投屏、录屏和你旁边那个人准备的 —— " +
     "那些名字仍然在页面里，任何人打开开发者工具都能读到。",
-  dragName: "手动排列文件夹",
+  dragName: "手动排列文件与文件夹",
   dragIntro:
-    "文件列表顶部那个上下箭头按钮打开「调整文件夹顺序」模式，再点一次或者按 Esc 都能退出。" +
-    "每个文件夹都会长出手柄并" +
-    "轻轻浮动，拖动它就能决定它排在同级文件夹中间的哪个位置 —— 按住其中一个时，" +
-    "只有能接住它的同级文件夹继续浮动，其余会变暗。文件完全不参与：它们不会长出手柄，" +
-    "始终待在排序菜单给它们的位置上，所以按文件名或按时间排序照样是原来的效果。" +
+    "文件列表顶部的上下箭头按钮打开「调整顺序」模式，再点一次或者按 Esc 都能退出。" +
+    "任意类型的文件和文件夹都会长出手柄。文件夹始终排在文件前面，" +
+    "只能在同一目录的文件之间或文件夹之间调整顺序。" +
+    "拖动后，该目录保存当前的文件和文件夹顺序；其他目录继续跟随 Obsidian 排序菜单。" +
+    "新建或移入的内容放在各自分组末尾。退出调整模式后，右键文件或文件夹，" +
+    "选择「恢复默认排序」，即可恢复菜单中标明的目录。" +
     "平时的拖拽也完全没变，关掉这个模式，把笔记拖进别的文件夹和以前一模一样。" +
     "本插件只调顺序，绝不移动任何东西。沉浸模式和调整顺序模式轮流使用，" +
     "要开一个得先关掉另一个。",
-  sortModeOff: "调整文件夹顺序",
+  sortModeOff: "调整文件与文件夹顺序",
   sortModeOn: "完成调整",
-  sortCommand: "切换调整文件夹顺序模式",
+  sortCommand: "切换调整文件与文件夹顺序模式",
+  reorder: "重新排序",
+  resetOrder: "恢复默认排序",
+  resetAllOrders: "恢复所有目录的默认排序",
+  resetAllOrdersDesc: "清除全部手动排序记录，让所有目录重新跟随 Obsidian 排序菜单。",
+  ordersReset: "已恢复默认排序",
   dragHint: "拖动调整排序",
   sortExitHint: "按 {key} 完成调整",
   needFile: "请先打开一篇笔记",
-  blockedBySort: "请先退出「调整文件夹顺序」模式",
+  blockedBySort: "请先退出「调整顺序」模式",
 
   blockedByCover: "请先退出沉浸模式",
-  sortUnavailable: "当前 Obsidian 没有暴露文件列表的排序，无法调整文件夹顺序。",
+  sortUnavailable: "当前 Obsidian 没有暴露文件列表的排序，无法调整顺序。",
 };
 
 /* Obsidian stamps its UI language onto <html lang>, which is public enough to
@@ -395,7 +414,7 @@ function registerIcon(): void {
 }
 
 export default class ImmersiveFolderPlugin extends Plugin {
-  settings: ImmersiveFolderSettings = { ...DEFAULT_SETTINGS };
+  settings: ImmersiveFolderSettings = { ...DEFAULT_SETTINGS, orders: {}, expandedBefore: [] };
   private lastSyncedPath: string | null = null;
   /* Null while the cover is down. An empty string means the vault root. */
   private focusPath: string | null = null;
@@ -409,6 +428,7 @@ export default class ImmersiveFolderPlugin extends Plugin {
     hint: () => this.t.dragHint,
     documents: () => this.explorerDocuments(),
     canDrag: (row) => this.canDrag(row),
+    canDrop: (source, target) => this.canDrop(source, target),
     /* Escape, from inside the mode. Not toggleSortMode(): that one asks
        whether the mode may be opened, and this direction never needs asking
        — leaving is always allowed. */
@@ -448,6 +468,7 @@ export default class ImmersiveFolderPlugin extends Plugin {
 
     this.registerToggleCommand();
     this.registerSortCommand();
+    this.registerOrderMenus();
 
     this.addSettingTab(new ImmersiveFolderSettingTab(this.app, this));
 
@@ -560,11 +581,18 @@ export default class ImmersiveFolderPlugin extends Plugin {
       | null;
     this.settings = Object.assign({}, DEFAULT_SETTINGS, saved);
 
-    /* Object.assign copies one level deep, so a settings file with no orders
-       key would leave this.settings.orders pointing at the object inside
-       DEFAULT_SETTINGS — and since orders are edited in place, every drag
-       would write into the defaults themselves. Copy it either way. */
-    this.settings.orders = { ...(saved?.orders ?? {}) };
+    /* Older records contain only folders. Clear them once rather than
+       interpreting them as a full directory order. Copy current records so
+       edits cannot mutate the defaults or the object returned by loadData. */
+    this.settings.orders = {};
+    this.settings.orderVersion = ORDER_VERSION;
+    if (saved?.orderVersion === ORDER_VERSION) {
+      for (const [path, names] of Object.entries(saved.orders ?? {})) {
+        if (Array.isArray(names) && names.every((name) => typeof name === "string")) {
+          this.settings.orders[path] = names.slice();
+        }
+      }
+    }
 
     /* revealOnEnable only fired as the cover came down; keepActiveInView is
        the same idea applied to every switch. Carry the old value over. */
@@ -584,6 +612,9 @@ export default class ImmersiveFolderPlugin extends Plugin {
        asked for it. */
     const stale = this.settings as unknown as Record<string, unknown>;
     for (const key of ["revealOnEnable", "revealTrail"]) delete stale[key];
+    if (saved && saved.orderVersion !== ORDER_VERSION) {
+      await this.saveData(this.settings);
+    }
   }
 
   private redraw(): void {
@@ -966,22 +997,22 @@ export default class ImmersiveFolderPlugin extends Plugin {
   }
 
   private captureExpanded(): void {
-    const open: string[] = [];
+    const open = new Set<string>();
     for (const view of this.explorerViews()) {
       for (const [path, item] of entriesOf(view.fileItems)) {
-        if (item.collapsible && !item.collapsed) open.push(path);
+        if (item.collapsible && !item.collapsed) open.add(path);
       }
     }
-    this.settings.expandedBefore = open;
+    this.settings.expandedBefore = [...open];
   }
 
   private restoreExpanded(): void {
     const wanted = new Set(this.settings.expandedBefore);
     for (const view of this.explorerViews()) {
       for (const [path, item] of entriesOf(view.fileItems)) {
-        if (item.collapsible && item.collapsed && wanted.has(path)) {
-          item.setCollapsed(false);
-        }
+        if (!item.collapsible) continue;
+        const collapsed = !wanted.has(path);
+        if (item.collapsed !== collapsed) item.setCollapsed(collapsed);
       }
     }
     this.settings.expandedBefore = [];
@@ -1024,16 +1055,21 @@ export default class ImmersiveFolderPlugin extends Plugin {
     for (const view of this.explorerViews()) sortView(view);
   }
 
-  /* Only folders take part. This plugin arranges the shape of the tree and
-     leaves every file where the sort menu put it, so a file row grows no
-     handle at all — which makes "files do not move here" something you can
-     see rather than something you find out by trying.
-   *
-     The cover does not come into it: the two modes refuse to be on at the
-     same time, so there are never skeleton bars to drag. */
-  private canDrag(row: HTMLElement): boolean {
+  private rowFile(row: HTMLElement): TAbstractFile | null {
     const path = row.getAttribute("data-path");
-    return path !== null && this.app.vault.getFolderByPath(path) !== null;
+    return path === null ? null : this.app.vault.getAbstractFileByPath(path);
+  }
+
+  /* The vault root itself cannot be dragged. Every child file or folder can. */
+  private canDrag(row: HTMLElement): boolean {
+    const file = this.rowFile(row);
+    return file !== null && file.parent !== null;
+  }
+
+  private canDrop(source: HTMLElement, target: HTMLElement): boolean {
+    const moving = this.rowFile(source);
+    const landing = this.rowFile(target);
+    return moving !== null && landing !== null && canReorder(moving, landing);
   }
 
   private async commitMove(
@@ -1042,11 +1078,16 @@ export default class ImmersiveFolderPlugin extends Plugin {
     target: string,
     position: "before" | "after"
   ): Promise<void> {
+    const folder = this.folderAt(folderPath);
+    const movingFile = folder?.children.find((child) => child.name === moving);
+    const targetFile = folder?.children.find((child) => child.name === target);
+    if (!movingFile || !targetFile || !canReorder(movingFile, targetFile)) return;
+
     /* Freeze what is on screen right now, before every drag rather than only
        the first. The move below is expressed as "put this name next to that
        one", so both names have to be in the record for it to mean anything —
-       and a subfolder created since the last drag is not, until this runs. */
-    this.orderStore.capture(folderPath, this.displayedFolderNames(folderPath));
+       and a child created since the last drag is not, until this runs. */
+    this.orderStore.capture(folderPath, this.displayedChildNames(folderPath));
 
     this.orderStore.move(folderPath, moving, target, position);
     await this.saveOrders();
@@ -1054,10 +1095,15 @@ export default class ImmersiveFolderPlugin extends Plugin {
        a list that simply looks different afterwards leaves you unsure the
        drop did what you meant. */
     animateReorder(this.explorerDocuments(), () => this.sortExplorer());
-
   }
 
-  /* A folder's subfolders in the order they are drawn: Obsidian's own sorting
+  private folderAt(folderPath: string): TFolder | null {
+    return folderPath === "/"
+      ? this.app.vault.getRoot()
+      : this.app.vault.getFolderByPath(folderPath);
+  }
+
+  /* A folder's children in the order they are drawn: Obsidian's own sorting
      with this plugin's record already laid over it.
    *
      Asked of the unpatched sorter rather than read off the screen. Reading
@@ -1066,11 +1112,8 @@ export default class ImmersiveFolderPlugin extends Plugin {
      children missing from the document. The snapshot would record only the
      part that happened to be in view, and everything else would come back as
      "never seen" and sink to the bottom the moment the folder was arranged. */
-  private displayedFolderNames(folderPath: string): string[] {
-    const folder =
-      folderPath === "/"
-        ? this.app.vault.getRoot()
-        : this.app.vault.getFolderByPath(folderPath);
+  private displayedChildNames(folderPath: string): string[] {
+    const folder = this.folderAt(folderPath);
 
     /* Arrange mode does not open without the patch, so this is a guard
        rather than a path anything reaches. */
@@ -1078,8 +1121,46 @@ export default class ImmersiveFolderPlugin extends Plugin {
 
     return this.orderStore
       .apply(folder, this.sortPatch.nativeItems(folder))
-      .filter((item) => item.file instanceof TFolder)
       .map((item) => item.file.name);
+  }
+
+  /* A folder menu can reset its contents or its parent's order. Naming the
+     directory also makes a root-level reset reachable from any child row. */
+  private registerOrderMenus(): void {
+    this.registerEvent(
+      this.app.workspace.on("file-menu", (menu, file) => {
+        if (file instanceof TFolder) {
+          menu.addItem((item) =>
+            item
+              .setTitle(this.t.reorder)
+              .setIcon("arrow-up-down")
+              .onClick(() => this.toggleSortMode())
+          );
+        }
+        const folders = file instanceof TFolder ? [file, file.parent] : [file.parent];
+        for (const folder of folders) {
+          if (!folder || !this.settings.orders[folder.path]) continue;
+          menu.addItem((item) =>
+            item
+              .setTitle(`${this.t.resetOrder}: ${folder.path}`)
+              .setIcon("rotate-ccw")
+              .onClick(() => void this.resetOrders(folder.path))
+          );
+        }
+      })
+    );
+  }
+
+  async resetOrders(folderPath?: string): Promise<void> {
+    const changed = folderPath === undefined
+      ? this.orderStore.resetAll()
+      : this.orderStore.reset(folderPath);
+    if (!changed) return;
+    this.dragSort.setActive(false);
+    this.syncButtons();
+    await this.saveOrders();
+    animateReorder(this.explorerDocuments(), () => this.sortExplorer());
+    new Notice(this.t.ordersReset);
   }
 
   /* Persist without redrawing. saveSettings() repaints the cover, which is
@@ -1089,15 +1170,14 @@ export default class ImmersiveFolderPlugin extends Plugin {
     await this.saveData(this.settings);
   }
 
-  /* No "create" handler: a folder that appears after its parent was arranged
+  /* No "create" handler: a child that appears after its parent was arranged
      is simply absent from the record, and apply() already knows what to do
-     with that — it goes to the bottom of the folder block until someone drags
+     with that — it goes to the bottom of its group until someone drags
      it. Nothing to write, so nothing to listen for.
 
      Both handlers below report whether they actually changed the record, and
-     the save only happens when they did. A record holds folder names only,
-     while most of what happens in a vault is files, so without that check
-     nearly every rename in the vault would rewrite data.json for nothing. */
+     the save only happens when they did. Events in directories without a
+     manual order therefore do not rewrite data.json. */
   private registerOrderEvents(): void {
     this.registerEvent(
       this.app.vault.on("delete", (file) => {
@@ -1338,6 +1418,11 @@ class ImmersiveFolderSettingTab extends PluginSettingTab {
         control: { type: "toggle", key: "revealAncestors" },
       },
       { name: t.dragName, desc: t.dragIntro },
+      {
+        name: t.resetAllOrders,
+        desc: t.resetAllOrdersDesc,
+        action: () => void this.plugin.resetOrders(),
+      },
       { name: t.disclaimerName, desc: t.disclaimer },
     ];
   }

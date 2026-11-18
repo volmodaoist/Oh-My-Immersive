@@ -13,9 +13,9 @@
  * file system — the worst a bug can do is put a row in the wrong place in a
  * list.
  *
- * Which rows take part is not decided here: the host answers canDrag(), and
- * it answers "folders only". Everything below is written in terms of that
- * answer rather than around it, so a row that is out is out of the grips, out
+ * The host decides which rows take part with canDrag(), and canDrop() limits
+ * each drag to siblings in the same group. Everything below uses those
+ * answers, so a row that is out is out of the grips, out
  * of the drop targets, and out of the drag from the first event onwards.
  */
 
@@ -107,11 +107,10 @@ export interface DragSortHost {
      and because the answer changes: a pane can be popped into a new window
      while the mode is open. */
   documents(): Document[];
-  /* Whether this row takes part at all — which, as the host has it, means
-     "is this a folder". A row that does not take part gets no grip: a handle
-     that cannot be used is worse than none, and its absence is what tells the
-     user which layer this mode is about. */
+  /* Whether this row represents a file or folder that can be arranged. */
   canDrag(row: HTMLElement): boolean;
+  /* Only siblings of the same kind can receive the dragged row. */
+  canDrop(source: HTMLElement, target: HTMLElement): boolean;
   /* Shut the mode down from the inside — what Escape asks for. The mode is
      the host's to hold, so this reports rather than acts: DragSort cannot
      switch off the button that says the mode is on. */
@@ -505,7 +504,10 @@ export class DragSort {
         if (row === source) return false;
         const other = row.getAttribute("data-path");
         return (
-          other !== null && parentKey(other) === parent && this.host.canDrag(row)
+          other !== null &&
+          parentKey(other) === parent &&
+          this.host.canDrag(row) &&
+          this.host.canDrop(source, row)
         );
       }
     );

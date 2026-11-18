@@ -174,8 +174,8 @@ export interface SortPatch {
      from the document entirely. A snapshot taken from the screen would
      silently record only what happened to be scrolled into view.
 
-     Items rather than names, because the caller has to tell folders from
-     files before it can record anything. */
+     Items rather than names, so the caller can keep folders before files
+     when applying a manual order. */
   nativeItems(folder: TFolder): FileTreeItem[];
 }
 
