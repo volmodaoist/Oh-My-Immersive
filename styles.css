@@ -28,6 +28,8 @@ body {
   --immersive-folder-shimmer: var(--color-accent);
 }
 
+.immersive-folder-ink-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+
 /* Either button carries an accent wash while its mode is on. Obsidian's own
    is-active only tints the glyph, which is easy to miss on a toolbar where
    every other button is the same shape — and "is it on right now" is the one
@@ -48,7 +50,8 @@ body {
    two-class rule and would win. */
 .nav-buttons-container .nav-action-button.immersive-folder-button.is-active,
 .nav-buttons-container
-  .nav-action-button.immersive-folder-sort-button.is-active {
+  .nav-action-button.immersive-folder-sort-button.is-active,
+.nav-buttons-container .nav-action-button.immersive-folder-ink-button.is-active {
   background-color: hsla(var(--color-accent-hsl), 0.18);
   color: var(--color-accent);
 }
