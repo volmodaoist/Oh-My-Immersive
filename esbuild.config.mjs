@@ -7,12 +7,22 @@ const banner = `/*
  */`;
 
 const prod = process.argv[2] === "production";
+const inkAssets = {
+	name: "remote-ink-assets",
+	setup(build) {
+		build.onResolve({ filter: /^remote-ink-client$/ }, () => ({ path: "client", namespace: "ink" }));
+		build.onLoad({ filter: /.*/, namespace: "ink" }, async () => {
+			const client = await esbuild.build({ entryPoints: ["src/ink/browser.ts"], bundle: true, write: false, format: "iife", target: "es2018", minify: prod, metafile: true });
+			return { contents: `export default ${JSON.stringify(client.outputFiles[0].text)}`, loader: "js", watchFiles: Object.keys(client.metafile.inputs), watchDirs: ["src/ink"] };
+		});
+	},
+};
 
 const context = await esbuild.context({
 	banner: { js: banner },
 	entryPoints: ["src/main.ts"],
 	bundle: true,
-	external: ["obsidian", "electron", ...builtinModules],
+	external: ["obsidian", "electron", "node:*", ...builtinModules],
 	format: "cjs",
 	target: "es2018",
 	logLevel: "info",
@@ -20,6 +30,7 @@ const context = await esbuild.context({
 	treeShaking: true,
 	outfile: "main.js",
 	minify: prod,
+	plugins: [inkAssets],
 });
 
 if (prod) {

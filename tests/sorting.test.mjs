@@ -71,7 +71,7 @@ const result = await build({
   platform: "node",
   format: "cjs",
   target: "es2018",
-  external: ["obsidian"],
+  external: ["obsidian", "remote-ink-client"],
 });
 const module = { exports: {} };
 vm.runInNewContext(result.outputFiles[0].text, {

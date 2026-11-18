@@ -20,5 +20,15 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
+  },
+  {
+    // This client and painter run in Safari/Chrome without Obsidian globals.
+    files: ["src/ink/browser.ts", "src/ink/engine.ts"],
+    rules: { "no-restricted-globals": "off", "obsidianmd/prefer-create-el": "off" },
+  },
+  {
+    // Loaded lazily by main.ts only after its desktop-platform check.
+    files: ["src/ink/server.ts"],
+    rules: { "obsidianmd/no-nodejs-modules": "off" },
   }
 );
