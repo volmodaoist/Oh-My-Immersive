@@ -54,7 +54,7 @@ export function parseOp(value: unknown): InkOp {
   throw new Error("无效的笔迹操作");
 }
 
-/** Single authoritative state; only finalized strokes are written to disk. */
+/** Single authoritative state held in memory for one service session. */
 export class InkStore {
   readonly strokes = new Map<string, Stroke>();
   revision = 0;
@@ -101,20 +101,5 @@ export class InkStore {
 
   snapshot(): InkSnapshot {
     return { revision: this.revision, strokes: [...this.strokes.values()].map(s => ({ ...s, points: s.points.slice() })) };
-  }
-  saved(): Stroke[] { return this.snapshot().strokes.filter(s => s.complete); }
-  restore(value: unknown): void {
-    if (!Array.isArray(value)) return;
-    for (const candidate of value.slice(0, 4096)) {
-      try {
-        if (!record(candidate) || !Array.isArray(candidate.points) || candidate.points.length > 100000) continue;
-        const first = parseOp({ t: "begin", stroke: { ...candidate, points: candidate.points.slice(0, 1) } });
-        if (first.t !== "begin") continue;
-        for (let i = 0; i < candidate.points.length; i += 2048) {
-          if (!points(candidate.points.slice(i, i + 2048))) throw new Error("无效的笔迹");
-        }
-        this.strokes.set(first.stroke.id, { ...first.stroke, points: candidate.points as Point[], complete: true });
-      } catch { /* Skip malformed persisted strokes. */ }
-    }
   }
 }

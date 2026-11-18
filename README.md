@@ -78,14 +78,18 @@ Obsidian window as a background with a drawing layer on top. You can test
 with a mouse in another browser: hold the left button and drag. Pencil uses
 pressure; mouse strokes use a fixed width. Touch does not draw or finish an
 active stroke. Pen, highlighter, stroke eraser, undo and clear are available.
+While the service runs, the desktop toolbar also shows a labeled **Clear ink**
+button. Clearing from either end clears ink on both ends.
 
 Samples stream in batches about every 20ms, so the desktop sees the stroke
-before the pointer is released. Completed strokes are saved to `ink.json`
-in the plugin directory; cancelled strokes are discarded. The background
+before the pointer is released. Releasing completes the stroke in memory;
+cancelled strokes are discarded. The background
 refreshes periodically. Both ends draw with normalized coordinates.
 
-Ink stays fixed on the window when notes scroll or change. Starting the
-service again restores saved ink; stopping removes the desktop layer. The
+Ink stays fixed on the window when notes scroll or change. Ink exists only
+in memory for the current service session. Stopping the service or closing
+Obsidian clears it; a new service starts empty. Refreshing a browser restores
+ink from the running service. The prototype's old `ink.json` is removed on start. The
 port defaults to `8674` and accepts integers from `1024` to `65535`. Changes
 take effect on the next start. The pencil button can be hidden separately.
 The host requires desktop Obsidian; clients can use iPad or desktop browsers.

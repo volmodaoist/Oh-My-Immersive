@@ -154,6 +154,7 @@ interface Strings {
   inkIntro: string;
   inkStart: string;
   inkStop: string;
+  inkClear: string;
   inkConnect: string;
   inkCopy: string;
   inkCopied: string;
@@ -170,6 +171,7 @@ const EN: Strings = {
   inkIntro: "Draw over the current window from another browser. Pencil uses pressure; mouse uses a fixed width. Touch does not draw. Ink stays on the screen when notes scroll or change.",
   inkStart: "Start remote ink",
   inkStop: "Stop remote ink",
+  inkClear: "Clear ink",
   inkConnect: "Remote ink connection",
   inkCopy: "Copy browser address",
   inkCopied: "Browser address copied",
@@ -274,6 +276,7 @@ const ZH: Strings = {
   inkIntro: "从另一个浏览器在当前窗口上书写。Pencil 使用压感，鼠标使用固定粗细，手指和手掌不落墨。笔迹固定在屏幕上，滚动或切换笔记时保持原位置。",
   inkStart: "启动远程书写",
   inkStop: "停止远程书写",
+  inkClear: "清屏",
   inkConnect: "远程书写连接",
   inkCopy: "复制浏览器地址",
   inkCopied: "已复制浏览器地址",
@@ -379,6 +382,7 @@ const BODY_CLASS = "immersive-folder-on";
 const BUTTON_CLASS = "immersive-folder-button";
 const SORT_BUTTON_CLASS = "immersive-folder-sort-button";
 const INK_BUTTON_CLASS = "immersive-folder-ink-button";
+const INK_CLEAR_BUTTON_CLASS = "immersive-folder-ink-clear-button";
 /* On whichever of the two buttons is waiting for the other mode to finish. */
 const DISABLED_CLASS = "immersive-folder-blocked";
 /* Marks a row the cover should spare. Set from here, matched in styles.css:
@@ -574,6 +578,11 @@ export default class ImmersiveFolderPlugin extends Plugin {
   registerInkCommands(): void {
     this.addCommand({ id: "remote-ink", name: this.t.inkConnect, callback: () => { void this.openInk(); } });
     this.addCommand({ id: "stop-remote-ink", name: this.t.inkStop, callback: () => { void this.stopInk(); } });
+    this.addCommand({ id: "clear-remote-ink", name: this.t.inkClear, checkCallback: checking => {
+      if (!this.remoteInk) return false;
+      if (!checking) this.clearInk();
+      return true;
+    } });
   }
 
   async openInk(): Promise<void> {
@@ -586,15 +595,9 @@ export default class ImmersiveFolderPlugin extends Plugin {
       try {
         const { RemoteInk } = await import("./ink/controller");
         const path = `${this.manifest.dir ?? `${this.app.vault.configDir}/plugins/${this.manifest.id}`}/ink.json`;
-        const ink = new RemoteInk({
-          load: async () => {
-            if (!(await this.app.vault.adapter.exists(path))) return [];
-            const data = JSON.parse(await this.app.vault.adapter.read(path)) as { strokes?: unknown };
-            return data.strokes;
-          },
-          save: async strokes => { await this.app.vault.adapter.write(path, JSON.stringify({ version: 1, strokes })); },
-          error: message => { new Notice(message); },
-        });
+        // Retire the prototype's old persisted ink. New strokes stay in RAM.
+        if (await this.app.vault.adapter.exists(path)) await this.app.vault.adapter.remove(path);
+        const ink = new RemoteInk();
         await ink.start(this.settings.inkPort);
         if (generation !== this.inkGeneration) { await ink.stop(); return; }
         this.remoteInk = ink;
@@ -617,6 +620,7 @@ export default class ImmersiveFolderPlugin extends Plugin {
       void navigator.clipboard.writeText(address).then(() => { new Notice(t.inkCopied); }).catch(() => { new Notice(address, 15000); });
     });
     actions.createEl("button", { text: t.inkStop }).addEventListener("click", () => { modal.close(); void this.stopInk(); });
+    actions.createEl("button", { text: t.inkClear }).addEventListener("click", () => { this.clearInk(); });
     modal.open();
   }
 
@@ -627,6 +631,8 @@ export default class ImmersiveFolderPlugin extends Plugin {
     this.syncButtons();
     await ink?.stop();
   }
+
+  clearInk(): void { this.remoteInk?.clear(); }
 
   async toggle(): Promise<void> {
     /* The two modes take turns. The cover replaces the very names you would
@@ -1394,6 +1400,12 @@ export default class ImmersiveFolderPlugin extends Plugin {
       });
       ink?.setAttribute("aria-label", this.remoteInk ? this.t.inkStop : this.t.inkStart);
       ink?.toggleClass(DISABLED_CLASS, this.inkStarting);
+      const clearInk = this.syncButton(bar, INK_CLEAR_BUTTON_CLASS, "eraser", this.remoteInk !== null && this.settings.showInkButton, false, () => { this.clearInk(); });
+      clearInk?.setAttribute("aria-label", this.t.inkClear);
+      if (clearInk) {
+        const label = clearInk.querySelector<HTMLElement>(".immersive-folder-ink-clear-label") ?? clearInk.createSpan({ cls: "immersive-folder-ink-clear-label" });
+        label.textContent = this.t.inkClear;
+      }
     }
   }
 
@@ -1455,7 +1467,7 @@ export default class ImmersiveFolderPlugin extends Plugin {
 
   private removeButtons(): void {
     for (const el of this.explorerQuery(
-      `.${BUTTON_CLASS}, .${SORT_BUTTON_CLASS}, .${INK_BUTTON_CLASS}`
+      `.${BUTTON_CLASS}, .${SORT_BUTTON_CLASS}, .${INK_BUTTON_CLASS}, .${INK_CLEAR_BUTTON_CLASS}`
     )) {
       el.remove();
     }

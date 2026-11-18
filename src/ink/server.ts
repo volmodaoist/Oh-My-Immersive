@@ -3,13 +3,12 @@ import { randomBytes } from "node:crypto";
 import { networkInterfaces } from "node:os";
 import { Buffer } from "node:buffer";
 import * as timers from "node:timers";
-import { InkStore, parseOp, type Stroke } from "./protocol";
+import { InkStore, parseOp } from "./protocol";
 import { INK_PAGE } from "./page";
 import clientSource from "remote-ink-client";
 
 export interface InkServerHost {
   frame(): Promise<Uint8Array>;
-  save(strokes: Stroke[]): void;
 }
 export class InkServer {
   readonly store = new InkStore();
@@ -53,7 +52,13 @@ export class InkServer {
     this.broadcast("dimensions", { width, height });
   }
 
+  clear(): void {
+    const op = { t: "clear" as const };
+    if (this.store.apply(op)) this.broadcast("op", { revision: this.store.revision, op });
+  }
+
   async stop(): Promise<void> {
+    this.clear();
     const server = this.server;
     this.server = null;
     for (const viewer of this.viewers) viewer.end();
@@ -124,7 +129,6 @@ export class InkServer {
         const op = parseOp(JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown);
         if (this.store.apply(op)) {
           this.broadcast("op", { revision: this.store.revision, op });
-          if (op.t !== "begin" && op.t !== "append") this.host.save(this.store.saved());
         }
         this.respond(res, 200, "application/json", JSON.stringify({ revision: this.store.revision }));
       } else { this.respond(res, 404, "text/plain", "Not found"); }

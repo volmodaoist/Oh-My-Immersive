@@ -29,17 +29,15 @@ test("normalized coordinates preserve the same point across different view sizes
   assert.deepEqual(plain(normalizedPoint(180, 130, { left: 20, top: 30, width: 640, height: 400 }, 0.8)), [0.25, 0.25, 0.8]);
 });
 
-test("append operations are visible before end but incomplete ink is not saved", () => {
+test("append operations are visible before end and finalize in session memory", () => {
   const store = new InkStore();
   store.apply(parseOp({ t: "begin", stroke: stroke() }));
   store.apply(parseOp({ t: "append", id: "s1", offset: 1, points: [[0.3, 0.4, 0.7], [0.5, 0.6, 0.9]] }));
   assert.equal(store.snapshot().strokes[0].points.length, 3);
   assert.equal(store.snapshot().strokes[0].complete, false);
-  assert.equal(store.saved().length, 0);
   store.apply({ t: "end", id: "s1" });
-  const restored = new InkStore();
-  restored.restore(plain(store.saved()));
-  assert.deepEqual(plain(restored.saved()), plain(store.saved()));
+  assert.equal(store.snapshot().strokes[0].complete, true);
+  assert.equal(store.snapshot().strokes[0].points.length, 3);
 });
 
 test("duplicate batches do not duplicate points and missing batches are rejected", () => {
@@ -52,16 +50,16 @@ test("duplicate batches do not duplicate points and missing batches are rejected
   assert.equal(store.snapshot().strokes[0].points.length, 2);
 });
 
-test("cancel discards a stroke; deleting and clearing saved strokes update state", () => {
+test("cancel discards a stroke; deleting and clearing completed strokes update state", () => {
   const store = new InkStore();
   store.apply({ t: "begin", stroke: stroke() });
   store.apply({ t: "cancel", id: "s1" });
   assert.equal(store.strokes.size, 0);
   for (const id of ["a", "b"]) { store.apply({ t: "begin", stroke: stroke(id) }); store.apply({ t: "end", id }); }
   store.apply({ t: "delete", ids: ["a"] });
-  assert.deepEqual(plain(store.saved().map(s => s.id)), ["b"]);
+  assert.deepEqual(plain(store.snapshot().strokes.map(s => s.id)), ["b"]);
   store.apply({ t: "clear" });
-  assert.equal(store.saved().length, 0);
+  assert.equal(store.snapshot().strokes.length, 0);
 });
 
 test("invalid coordinates, colors and oversized point batches are rejected", () => {
@@ -103,8 +101,7 @@ test("compositing unfinished ink retains all earlier stroke segments", () => {
 });
 
 test("HTTP and SSE broadcast incremental ink before pointer-up", async t => {
-  const saved = [];
-  const server = new InkServer({ frame: async () => Buffer.from("test frame"), save: strokes => saved.push(plain(strokes)) });
+  const server = new InkServer({ frame: async () => Buffer.from("test frame") });
   await server.start(0);
   const base = `http://127.0.0.1:${server.port}`;
   const suffix = `?code=${server.code}`;
@@ -131,10 +128,28 @@ test("HTTP and SSE broadcast incremental ink before pointer-up", async t => {
   const state = await (await fetch(base + "/api/state" + suffix)).json();
   assert.equal(state.strokes[0].complete, false);
   assert.equal(state.strokes[0].points.length, 2);
-  assert.equal(saved.length, 0);
   assert.equal((await post({ t: "end", id: "s1" })).status, 200);
-  assert.equal(saved[0][0].points.length, 2);
+  assert.equal((await next()).data.op.t, "end");
+  assert.equal(server.store.snapshot().strokes[0].complete, true);
+  server.clear();
+  assert.equal((await next()).data.op.t, "clear");
+  assert.equal((await (await fetch(base + "/api/state" + suffix)).json()).strokes.length, 0);
   assert.equal((await fetch(base + "/api/state")).status, 401);
   assert.equal((await post({ t: "append", id: "missing", offset: 1, points: [[0, 0, 0.5]] })).status, 400);
   assert.equal((await fetch(base + "/api/state" + suffix, { headers: { Origin: "http://different-host" } })).status, 403);
+});
+
+test("stopping the service clears temporary ink and a new service starts empty", async () => {
+  const host = { frame: async () => Buffer.from("test frame") };
+  const server = new InkServer(host);
+  await server.start(0);
+  server.store.apply({ t: "begin", stroke: stroke() });
+  server.store.apply({ t: "end", id: "s1" });
+  assert.equal(server.store.strokes.size, 1);
+  await server.stop();
+  assert.equal(server.store.strokes.size, 0);
+  const next = new InkServer(host);
+  await next.start(0);
+  assert.equal(next.store.snapshot().strokes.length, 0);
+  await next.stop();
 });

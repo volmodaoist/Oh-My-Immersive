@@ -1,5 +1,4 @@
 import { InkServer } from "./server";
-import type { Stroke } from "./protocol";
 
 interface Bounds { x: number; y: number; width: number; height: number }
 interface WebContents {
@@ -23,12 +22,6 @@ interface NativeRemote {
   getCurrentWebContents(): WebContents;
   BrowserWindow: new (options: Record<string, unknown>) => NativeWindow;
 }
-export interface InkControllerHost {
-  load(): Promise<unknown>;
-  save(strokes: Stroke[]): Promise<void>;
-  error(message: string): void;
-}
-
 /** The ink lives in a transparent child window. Capturing the parent therefore
  * never feeds the drawn ink back into the browser's background image. */
 export class RemoteInk {
@@ -38,13 +31,10 @@ export class RemoteInk {
   private contents: WebContents | null = null;
   private framePromise: Promise<Uint8Array> | null = null;
   private frameTime = 0;
-  private saveQueue = Promise.resolve();
   private stopped = false;
 
-  constructor(private readonly host: InkControllerHost) {
-    this.server = new InkServer({ frame: () => this.capture(), save: strokes => {
-      this.saveQueue = this.saveQueue.then(() => host.save(strokes)).catch((error: unknown) => host.error(error instanceof Error ? error.message : "笔迹保存失败"));
-    } });
+  constructor() {
+    this.server = new InkServer({ frame: () => this.capture() });
   }
 
   get connection(): { local: string; lan: string[]; code: string } {
@@ -60,7 +50,6 @@ export class RemoteInk {
     this.parent = remote.getCurrentWindow();
     this.contents = remote.getCurrentWebContents();
     if (typeof this.contents.capturePage !== "function") throw new Error("当前 Obsidian 无法获取窗口底图。");
-    this.server.store.restore(await this.host.load());
     try {
       await this.server.start(port);
       const bounds = this.parent.getContentBounds();
@@ -94,6 +83,8 @@ export class RemoteInk {
   private readonly hide = (): void => { this.layer?.hide(); };
   private readonly close = (): void => { void this.stop(); };
 
+  clear(): void { this.server.clear(); }
+
   private capture(): Promise<Uint8Array> {
     if (this.stopped || !this.contents) return Promise.reject(new Error("书写服务已停止"));
     if (!this.framePromise || Date.now() - this.frameTime > 300) {
@@ -115,6 +106,5 @@ export class RemoteInk {
     if (this.layer && !this.layer.isDestroyed()) this.layer.destroy();
     this.layer = null;
     await this.server.stop();
-    await this.saveQueue;
   }
 }

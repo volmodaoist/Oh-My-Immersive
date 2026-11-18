@@ -29,6 +29,8 @@ body {
 }
 
 .immersive-folder-ink-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.nav-buttons-container .nav-action-button.immersive-folder-ink-clear-button { width: auto; gap: 4px; }
+.immersive-folder-ink-clear-label { font-size: var(--font-ui-small); }
 
 /* Either button carries an accent wash while its mode is on. Obsidian's own
    is-active only tints the glyph, which is easy to miss on a toolbar where

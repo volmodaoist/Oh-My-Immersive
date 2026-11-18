@@ -230,6 +230,14 @@ element<HTMLFormElement>("pair-form").addEventListener("submit", event => {
     connect();
   }).catch(() => { pairError.textContent = "无法连接服务。"; });
 });
+window.addEventListener("hashchange", () => {
+  const next = new URLSearchParams(location.hash.slice(1)).get("code") ?? "";
+  if (next === token) return;
+  token = next;
+  epoch++;
+  cancelLocal();
+  connect();
+});
 
 async function nextFrame(): Promise<void> {
   if (!overlay && connected) {
