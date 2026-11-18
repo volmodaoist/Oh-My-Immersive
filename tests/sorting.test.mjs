@@ -121,6 +121,7 @@ function fixture(data = null) {
     },
     workspace: {
       getLeavesOfType: () => [],
+      iterateAllLeaves: () => {},
       on: (name, callback) => { events.set(name, callback); },
     },
   };

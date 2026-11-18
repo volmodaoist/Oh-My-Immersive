@@ -29,8 +29,10 @@ body {
 }
 
 .immersive-folder-ink-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-.nav-buttons-container .nav-action-button.immersive-folder-ink-clear-button { width: auto; gap: 4px; }
-.immersive-folder-ink-clear-label { font-size: var(--font-ui-small); }
+.view-header .view-action.immersive-folder-ink-button.is-active {
+  color: var(--color-accent);
+  background-color: var(--background-modifier-hover);
+}
 
 /* Either button carries an accent wash while its mode is on. Obsidian's own
    is-active only tints the glyph, which is easy to miss on a toolbar where
@@ -52,8 +54,7 @@ body {
    two-class rule and would win. */
 .nav-buttons-container .nav-action-button.immersive-folder-button.is-active,
 .nav-buttons-container
-  .nav-action-button.immersive-folder-sort-button.is-active,
-.nav-buttons-container .nav-action-button.immersive-folder-ink-button.is-active {
+  .nav-action-button.immersive-folder-sort-button.is-active {
   background-color: hsla(var(--color-accent-hsl), 0.18);
   color: var(--color-accent);
 }

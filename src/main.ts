@@ -2,6 +2,7 @@ import {
   addIcon,
   App,
   Modal,
+  ItemView,
   Notice,
   Platform,
   Plugin,
@@ -177,7 +178,7 @@ const EN: Strings = {
   inkPort: "Remote ink port",
   inkPortDesc: "Use an integer from 1024 to 65535. Changes take effect the next time the service starts.",
   inkPortBusy: "This port is already in use. Choose another remote ink port in settings.",
-  inkButton: "Show the remote ink toolbar button",
+  inkButton: "Show remote ink buttons in note headers",
   inkDesktop: "Start remote ink in desktop Obsidian, then connect from your browser.",
   command: "Toggle immersive folder",
   ariaOn: "Leave immersive folder",
@@ -281,7 +282,7 @@ const ZH: Strings = {
   inkPort: "远程书写服务端口",
   inkPortDesc: "输入 1024～65535 之间的整数。修改后在下次启动服务时生效。",
   inkPortBusy: "该端口已被占用，请在设置中更换远程书写服务端口。",
-  inkButton: "显示远程书写工具栏按钮",
+  inkButton: "在笔记标题栏显示远程书写按钮",
   inkDesktop: "请在桌面版 Obsidian 启动远程书写，再从浏览器连接。",
   command: "切换沉浸模式",
   ariaOn: "退出沉浸模式",
@@ -503,6 +504,7 @@ export default class ImmersiveFolderPlugin extends Plugin {
   private remoteInk: RemoteInk | null = null;
   private inkStarting = false;
   private inkGeneration = 0;
+  private inkActionBars = new Set<HTMLElement>();
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -1390,19 +1392,44 @@ export default class ImmersiveFolderPlugin extends Plugin {
             ? this.t.sortModeOn
             : this.t.sortModeOff
       );
-      const ink = this.syncButton(bar, INK_BUTTON_CLASS, "pencil-line", this.settings.showInkButton && !Platform.isMobile, this.remoteInk !== null, () => {
-        if (this.remoteInk) void this.stopInk();
-        else void this.openInk();
-      });
-      ink?.setAttribute("aria-label", this.remoteInk ? this.t.inkStop : this.t.inkStart);
-      ink?.toggleClass(DISABLED_CLASS, this.inkStarting);
-      const clearInk = this.syncButton(bar, INK_CLEAR_BUTTON_CLASS, "eraser", this.remoteInk !== null && this.settings.showInkButton, false, () => { this.clearInk(); });
-      clearInk?.setAttribute("aria-label", this.t.inkClear);
-      if (clearInk) {
-        const label = clearInk.querySelector<HTMLElement>(".immersive-folder-ink-clear-label") ?? clearInk.createSpan({ cls: "immersive-folder-ink-clear-label" });
-        label.textContent = this.t.inkClear;
-      }
     }
+    this.syncInkButtons();
+  }
+
+  private syncInkButtons(): void {
+    const current = new Set<HTMLElement>();
+    const wanted = this.settings.showInkButton && !Platform.isMobile;
+    this.app.workspace.iterateAllLeaves(leaf => {
+      const view = leaf.view;
+      if (!(view instanceof ItemView) || !view.containerEl.closest(".workspace-split.mod-root")) return;
+      const bar = view.containerEl.querySelector<HTMLElement>(".view-header .view-actions");
+      if (!bar) return;
+      current.add(bar);
+      let ink = bar.querySelector<HTMLElement>(`.${INK_BUTTON_CLASS}`);
+      let clear = bar.querySelector<HTMLElement>(`.${INK_CLEAR_BUTTON_CLASS}`);
+      if (!wanted) { ink?.remove(); clear?.remove(); return; }
+      if (!ink) {
+        ink = view.addAction("pencil-line", this.t.inkStart, () => {
+          if (this.remoteInk) void this.stopInk();
+          else void this.openInk();
+        });
+        ink.addClass(INK_BUTTON_CLASS);
+      }
+      ink.toggleClass("is-active", this.remoteInk !== null);
+      ink.toggleClass(DISABLED_CLASS, this.inkStarting);
+      ink.setAttribute("aria-label", this.remoteInk ? this.t.inkStop : this.t.inkStart);
+      ink.setAttribute("aria-busy", String(this.inkStarting));
+      if (!this.remoteInk) { clear?.remove(); return; }
+      if (!clear) {
+        clear = view.addAction("eraser", this.t.inkClear, () => { this.clearInk(); });
+        clear.addClass(INK_CLEAR_BUTTON_CLASS);
+      }
+      clear.setAttribute("aria-label", this.t.inkClear);
+    });
+    for (const bar of this.inkActionBars) {
+      if (!current.has(bar)) bar.querySelectorAll(`.${INK_BUTTON_CLASS}, .${INK_CLEAR_BUTTON_CLASS}`).forEach(button => button.remove());
+    }
+    this.inkActionBars = current;
   }
 
   private syncButton(
@@ -1462,6 +1489,8 @@ export default class ImmersiveFolderPlugin extends Plugin {
   }
 
   private removeButtons(): void {
+    for (const bar of this.inkActionBars) bar.querySelectorAll(`.${INK_BUTTON_CLASS}, .${INK_CLEAR_BUTTON_CLASS}`).forEach(button => button.remove());
+    this.inkActionBars.clear();
     for (const el of this.explorerQuery(
       `.${BUTTON_CLASS}, .${SORT_BUTTON_CLASS}, .${INK_BUTTON_CLASS}, .${INK_CLEAR_BUTTON_CLASS}`
     )) {

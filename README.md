@@ -68,7 +68,7 @@ plugin only saves display order; it does not rename or move files.
 
 ### Remote ink (desktop prototype)
 
-The pencil button in the file explorer starts a LAN drawing service and shows
+The pencil button at the top right of a note starts a LAN drawing service and shows
 the connection address. Click it again to stop. The **Remote ink connection**
 command and the **Remote ink** setting also open the address dialog. Closing
 the dialog keeps the service running.
@@ -78,8 +78,7 @@ Obsidian window as a background with a drawing layer on top. You can test
 with a mouse in another browser: hold the left button and drag. Pencil uses
 pressure; mouse strokes use a fixed width. Touch does not draw or finish an
 active stroke. Pen, highlighter, stroke eraser, undo and clear are available.
-While the service runs, the desktop toolbar also shows a labeled **Clear ink**
-button. Clearing from either end clears ink on both ends.
+While the service runs, the note header also shows an eraser icon for **Clear ink**. Clearing from either end clears ink on both ends.
 
 Samples stream in batches about every 20ms, so the desktop sees the stroke
 before the pointer is released. Releasing completes the stroke in memory;
