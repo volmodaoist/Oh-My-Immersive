@@ -1,5 +1,6 @@
 import { acceptsPointer, normalizedPoint, pressureOf, hitStroke, InkPainter } from "./engine";
 import { protectDrawingSurface } from "./gestures";
+import { FramePainter } from "./frames";
 import type { InkEvent, InkOp, Point, Stroke, InkSnapshot } from "./protocol";
 
 function element<T extends HTMLElement>(id: string): T {
@@ -16,7 +17,8 @@ sessionStorage.setItem("immersive-folder-ink-client", client);
 const canvas = element<HTMLCanvasElement>("ink");
 const stage = element("stage");
 const area = element("area");
-const background = element("background");
+const background = element<HTMLCanvasElement>("background");
+const framePainter = new FramePainter(background);
 protectDrawingSurface(area);
 const status = element("status");
 const painter = new InkPainter(canvas);
@@ -37,7 +39,6 @@ let batch: number | null = null;
 let erased = new Set<string>();
 let chain = Promise.resolve();
 let epoch = 0;
-let frameURL: string | null = null;
 
 const endpoint = (path: string) => `${path}${path.includes("?") ? "&" : "?"}code=${encodeURIComponent(token)}`;
 function render(): void {
@@ -247,11 +248,8 @@ async function nextFrame(): Promise<void> {
     try {
       const response = await fetch(endpoint(`/frame?n=${Date.now()}`));
       if (!response.ok) throw new Error("Frame unavailable");
-      const url = URL.createObjectURL(await response.blob());
-      const previous = frameURL;
-      background.style.backgroundImage = `url("${url}")`;
-      frameURL = url;
-      if (previous) URL.revokeObjectURL(previous);
+      await framePainter.show(await response.blob());
+      if (status.textContent === "底图暂不可用，等待本机窗口…") status.textContent = "已连接 · 笔尖 / 鼠标 · 触摸不落墨";
     } catch { status.textContent = "底图暂不可用，等待本机窗口…"; }
   }
   window.setTimeout(() => { void nextFrame(); }, 350);
@@ -259,3 +257,4 @@ async function nextFrame(): Promise<void> {
 connect();
 resize();
 void nextFrame();
+window.addEventListener("pagehide", event => { if (!event.persisted) framePainter.destroy(); });
