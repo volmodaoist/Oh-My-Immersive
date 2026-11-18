@@ -28,7 +28,17 @@ body {
   --immersive-folder-shimmer: var(--color-accent);
 }
 
-.immersive-folder-ink-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.modal.immersive-folder-ink-modal { --modal-radius: var(--radius-m); border-radius: var(--modal-radius); }
+.immersive-folder-ink-address-label { color: var(--text-muted); font-size: var(--font-ui-small); margin-bottom: var(--size-4-2); }
+.immersive-folder-ink-address { display: block; padding: var(--size-4-3); border: var(--border-width) solid var(--background-modifier-border); border-radius: var(--radius-s); background: var(--background-secondary); font-size: var(--font-ui-small); white-space: nowrap; overflow-x: auto; user-select: all; }
+.immersive-folder-ink-status { min-height: 1.5em; color: var(--text-muted); }
+.immersive-folder-ink-status[data-state="error"] { color: var(--text-error); }
+.immersive-folder-ink-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--size-4-2); margin-top: var(--size-4-4); }
+.immersive-folder-ink-actions button { border-radius: var(--radius-s); }
+.view-header .view-action.immersive-folder-ink-button.immersive-folder-blocked { opacity: 0.5; pointer-events: none; }
+.immersive-folder-ink-actions button, .view-header .immersive-folder-ink-button, .view-header .immersive-folder-ink-clear-button { transition: filter 100ms ease, box-shadow 100ms ease; }
+.immersive-folder-ink-actions button.immersive-folder-ink-clicked, .view-header .view-action.immersive-folder-ink-clicked { filter: brightness(1.15); box-shadow: inset 0 0 0 1px var(--interactive-accent); }
+@media (prefers-reduced-motion: reduce) { .immersive-folder-ink-actions button, .view-header .immersive-folder-ink-button, .view-header .immersive-folder-ink-clear-button { transition: none; } }
 .view-header .view-action.immersive-folder-ink-button.is-active {
   color: var(--color-accent);
   background-color: var(--background-modifier-hover);

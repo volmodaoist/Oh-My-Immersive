@@ -1,7 +1,6 @@
 import {
   addIcon,
   App,
-  Modal,
   ItemView,
   Notice,
   Platform,
@@ -27,6 +26,8 @@ import {
 import { canReorder, ORDER_VERSION, Orders, OrderStore } from "./order";
 import { animateReorder, DragSort } from "./dnd";
 import type { RemoteInk } from "./ink/controller";
+import { InkConnectionModal, type InkDialogLabels } from "./ink/dialog";
+import { flashInkButton } from "./ink/feedback";
 
 type Language = "auto" | "en" | "zh";
 
@@ -105,7 +106,7 @@ const DEFAULT_SETTINGS: ImmersiveFolderSettings = {
 
 /* Every user-facing string in one place, so a new language is a matter of
    adding one object rather than hunting through the file. */
-interface Strings {
+interface Strings extends InkDialogLabels {
   command: string;
   introName: string;
   disclaimerName: string;
@@ -158,7 +159,6 @@ interface Strings {
   inkClear: string;
   inkConnect: string;
   inkCopy: string;
-  inkCopied: string;
   inkPort: string;
   inkPortDesc: string;
   inkPortBusy: string;
@@ -167,6 +167,12 @@ interface Strings {
 }
 
 const EN: Strings = {
+  inkAddress: "Browser address",
+  inkCopyFailed: "Could not copy. Select the address above and copy it manually.",
+  inkStopping: "Stopping…",
+  inkStopped: "Stopped",
+  inkStarting: "Starting…",
+  inkRunning: "Service running",
   inkName: "Remote ink",
   inkIntro: "Draw over the current window from another browser. Pencil uses pressure; mouse uses a fixed width. Touch does not draw. Ink stays on the screen when notes scroll or change.",
   inkStart: "Start remote ink",
@@ -174,7 +180,6 @@ const EN: Strings = {
   inkClear: "Clear ink",
   inkConnect: "Remote ink connection",
   inkCopy: "Copy browser address",
-  inkCopied: "Browser address copied",
   inkPort: "Remote ink port",
   inkPortDesc: "Use an integer from 1024 to 65535. Changes take effect the next time the service starts.",
   inkPortBusy: "This port is already in use. Choose another remote ink port in settings.",
@@ -271,6 +276,12 @@ const EN: Strings = {
 };
 
 const ZH: Strings = {
+  inkAddress: "浏览器地址",
+  inkCopyFailed: "未能复制，请选中上方地址手动复制。",
+  inkStopping: "停止中…",
+  inkStopped: "已停止",
+  inkStarting: "启动中…",
+  inkRunning: "服务运行中",
   inkName: "远程书写",
   inkIntro: "从另一个浏览器在当前窗口上书写。Pencil 使用压感，鼠标使用固定粗细，手指和手掌不落墨。笔迹固定在屏幕上，滚动或切换笔记时保持原位置。",
   inkStart: "启动远程书写",
@@ -278,7 +289,6 @@ const ZH: Strings = {
   inkClear: "清屏",
   inkConnect: "远程书写连接",
   inkCopy: "复制浏览器地址",
-  inkCopied: "已复制浏览器地址",
   inkPort: "远程书写服务端口",
   inkPortDesc: "输入 1024～65535 之间的整数。修改后在下次启动服务时生效。",
   inkPortBusy: "该端口已被占用，请在设置中更换远程书写服务端口。",
@@ -503,8 +513,11 @@ export default class ImmersiveFolderPlugin extends Plugin {
   private sweep: Sweep | null = null;
   private remoteInk: RemoteInk | null = null;
   private inkStarting = false;
+  private inkStopping = false;
   private inkGeneration = 0;
   private inkActionBars = new Set<HTMLElement>();
+  private buttonsRemoved = false;
+  private inkDialog: InkConnectionModal | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -518,6 +531,9 @@ export default class ImmersiveFolderPlugin extends Plugin {
     this.register(() => this.dragSort.setActive(false));
     this.register(() => this.dropSweep());
     this.register(() => { void this.stopInk(); });
+    this.register(() => {
+      this.inkDialog?.close();
+    });
 
     this.registerToggleCommand();
     this.registerSortCommand();
@@ -586,10 +602,12 @@ export default class ImmersiveFolderPlugin extends Plugin {
 
   async openInk(): Promise<void> {
     if (Platform.isMobile) { new Notice(this.t.inkDesktop); return; }
-    if (this.inkStarting) return;
+    const modal = this.showInkDialog();
+    if (this.inkStarting || this.inkStopping) return;
     if (!this.remoteInk) {
       this.inkStarting = true;
       const generation = ++this.inkGeneration;
+      modal.resetFeedback();
       this.syncButtons();
       try {
         const { RemoteInk } = await import("./ink/controller");
@@ -602,35 +620,44 @@ export default class ImmersiveFolderPlugin extends Plugin {
         this.remoteInk = ink;
       } catch (error: unknown) {
         const occupied = typeof error === "object" && error !== null && "code" in error && error.code === "EADDRINUSE";
-        new Notice(occupied ? this.t.inkPortBusy : error instanceof Error ? error.message : "无法启动远程书写");
+        modal.showError(occupied ? this.t.inkPortBusy : error instanceof Error ? error.message : "无法启动远程书写");
         return;
-      } finally { this.inkStarting = false; this.syncButtons(); }
+      } finally { this.inkStarting = false; this.syncButtons(); modal.refresh(); }
     }
-    if (!this.remoteInk) return;
-    const t = this.t, connection = this.remoteInk.connection;
-    const modal = new Modal(this.app);
-    modal.setTitle(t.inkConnect);
-    modal.contentEl.createEl("p", { text: t.inkIntro });
-    const address = connection.lan[0] ?? connection.local;
-    for (const url of connection.lan) modal.contentEl.createEl("p").createEl("code", { text: url });
-    const actions = modal.contentEl.createDiv({ cls: "immersive-folder-ink-actions" });
-    actions.createEl("button", { text: t.inkCopy, cls: "mod-cta" }).addEventListener("click", () => {
-      void navigator.clipboard.writeText(address).then(() => { new Notice(t.inkCopied); }).catch(() => { new Notice(address, 15000); });
-    });
-    actions.createEl("button", { text: t.inkStop }).addEventListener("click", () => { modal.close(); void this.stopInk(); });
-    actions.createEl("button", { text: t.inkClear }).addEventListener("click", () => { this.clearInk(); });
+    modal.refresh();
+  }
+
+  private showInkDialog(): InkConnectionModal {
+    if (this.inkDialog) return this.inkDialog;
+    const modal = new InkConnectionModal(this.app, {
+      connection: () => this.remoteInk?.connection ?? null,
+      starting: () => this.inkStarting,
+      stopping: () => this.inkStopping,
+      stop: () => this.stopInk(),
+      clear: () => this.clearInk(),
+      closed: () => { this.inkDialog = null; },
+    }, this.t);
+    this.inkDialog = modal;
     modal.open();
+    return modal;
   }
 
   async stopInk(): Promise<void> {
+    if (this.inkStopping) return;
     this.inkGeneration++;
     const ink = this.remoteInk;
     this.remoteInk = null;
+    this.inkStopping = ink !== null;
     this.syncButtons();
-    await ink?.stop();
+    this.inkDialog?.refresh();
+    try { await ink?.stop(); }
+    finally { this.inkStopping = false; this.syncButtons(); this.inkDialog?.refresh(); }
   }
 
-  clearInk(): void { this.remoteInk?.clear(); }
+  clearInk(): void {
+    if (!this.remoteInk) return;
+    this.remoteInk.clear();
+  }
 
   async toggle(): Promise<void> {
     /* The two modes take turns. The cover replaces the very names you would
@@ -1319,6 +1346,7 @@ export default class ImmersiveFolderPlugin extends Plugin {
      way to claim a place in it. The setting below is the only lever, and it
      belongs to the user. */
   syncButtons(): void {
+    if (this.buttonsRemoved) return;
     const buttons = this.settings.toolbarButtons;
     const wantCover = buttons === "both" || buttons === "immersive";
     const wantSort = buttons === "both" || buttons === "sort";
@@ -1397,6 +1425,7 @@ export default class ImmersiveFolderPlugin extends Plugin {
   }
 
   private syncInkButtons(): void {
+    if (this.buttonsRemoved) return;
     const current = new Set<HTMLElement>();
     const wanted = this.settings.showInkButton && !Platform.isMobile;
     this.app.workspace.iterateAllLeaves(leaf => {
@@ -1407,21 +1436,25 @@ export default class ImmersiveFolderPlugin extends Plugin {
       current.add(bar);
       let ink = bar.querySelector<HTMLElement>(`.${INK_BUTTON_CLASS}`);
       let clear = bar.querySelector<HTMLElement>(`.${INK_CLEAR_BUTTON_CLASS}`);
+      if (!this.inkActionBars.has(bar)) { ink?.remove(); clear?.remove(); ink = null; clear = null; }
       if (!wanted) { ink?.remove(); clear?.remove(); return; }
       if (!ink) {
         ink = view.addAction("pencil-line", this.t.inkStart, () => {
+          if (ink) flashInkButton(ink);
           if (this.remoteInk) void this.stopInk();
           else void this.openInk();
         });
         ink.addClass(INK_BUTTON_CLASS);
       }
       ink.toggleClass("is-active", this.remoteInk !== null);
-      ink.toggleClass(DISABLED_CLASS, this.inkStarting);
-      ink.setAttribute("aria-label", this.remoteInk ? this.t.inkStop : this.t.inkStart);
-      ink.setAttribute("aria-busy", String(this.inkStarting));
+      const busy = this.inkStarting || this.inkStopping;
+      setIcon(ink, "pencil-line");
+      ink.toggleClass(DISABLED_CLASS, busy);
+      ink.setAttribute("aria-label", this.inkStarting ? this.t.inkStarting : this.inkStopping ? this.t.inkStopping : this.remoteInk ? this.t.inkStop : this.t.inkStart);
+      ink.setAttribute("aria-busy", String(busy));
       if (!this.remoteInk) { clear?.remove(); return; }
       if (!clear) {
-        clear = view.addAction("eraser", this.t.inkClear, () => { this.clearInk(); });
+        clear = view.addAction("eraser", this.t.inkClear, () => { if (clear) flashInkButton(clear); this.clearInk(); });
         clear.addClass(INK_CLEAR_BUTTON_CLASS);
       }
       clear.setAttribute("aria-label", this.t.inkClear);
@@ -1489,6 +1522,7 @@ export default class ImmersiveFolderPlugin extends Plugin {
   }
 
   private removeButtons(): void {
+    this.buttonsRemoved = true;
     for (const bar of this.inkActionBars) bar.querySelectorAll(`.${INK_BUTTON_CLASS}, .${INK_CLEAR_BUTTON_CLASS}`).forEach(button => button.remove());
     this.inkActionBars.clear();
     for (const el of this.explorerQuery(

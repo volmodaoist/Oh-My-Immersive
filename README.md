@@ -88,8 +88,14 @@ refreshes periodically. Both ends draw with normalized coordinates.
 Ink stays fixed on the window when notes scroll or change. Ink exists only
 in memory for the current service session. Stopping the service or closing
 Obsidian clears it; a new service starts empty. Refreshing a browser restores
-ink from the running service. The prototype's old `ink.json` is removed on start. The
-port defaults to `8674` and accepts integers from `1024` to `65535`. Changes
+ink from the running service. The prototype's old `ink.json` is removed on start.
+
+The connection dialog uses theme radius variables and native button components.
+Buttons briefly highlight when clicked and keep their original text and icons.
+The dialog stays open after stopping, and service state and errors appear inline.
+The header buttons use the same click feedback.
+
+The port defaults to `8674` and accepts integers from `1024` to `65535`. Changes
 take effect on the next start. The pencil button can be hidden separately.
 The host requires desktop Obsidian; clients can use iPad or desktop browsers.
 Desktop ink uses a transparent child window, so recordings should capture

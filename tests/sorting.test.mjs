@@ -83,6 +83,7 @@ vm.runInNewContext(result.outputFiles[0].text, {
       TAbstractFile, TFolder, TFile,
       Plugin: PluginHost,
       PluginSettingTab: class {},
+      Modal: class {},
       Notice: class {},
       Platform: { isMobile: false },
     };
