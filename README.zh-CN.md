@@ -174,6 +174,7 @@ Node.js 的 JavaScript 检查规则。
 ## 发布新版本
 
 完整的提交检查、Actions 发布和失败重试教程见 [GitHub 操作与发布教程](.github/README.md)。
+当前项目的社区准入核查、提交步骤和后续更新流程见 [Obsidian 插件发布 SOP](docs/ob-sop.md)。
 
 发布到 GitHub Release 可使用快速命令，需配置 Git 身份、origin 的推送权限和 Python 3。
 无需本机登录 GitHub CLI；附件由已启用的 GitHub Actions 发布流程上传。

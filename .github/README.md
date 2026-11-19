@@ -155,6 +155,7 @@ Actions 成功后，在 [Releases](https://github.com/volmodaoist/Oh-My-Immersiv
 上述流程发布的是 GitHub 发行版。用户可以下载三个附件手动安装，或使用 `make install` 从源码安装。
 
 Obsidian 社区目录提交是另一项操作，需要通过 [community.obsidian.md](https://community.obsidian.md) 的开发者界面提交并处理审核反馈。推送标签和创建 GitHub Release 不会自动完成社区上架。
+本项目的当前准备状态、代码来源条件与社区提交步骤见 [Obsidian 插件发布 SOP](../docs/ob-sop.md)。
 
 ## 可扩展的 `.github` 功能
 

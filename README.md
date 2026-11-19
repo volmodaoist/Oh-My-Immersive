@@ -214,6 +214,8 @@ responsibilities. Run `npm run format:ink` to format that module.
 
 See the [GitHub workflow and release guide](.github/README.md) (Chinese) for
 checked commits, Actions monitoring and recovery procedures.
+For Community directory requirements and the submission process, see the
+[Obsidian publication SOP](docs/ob-sop.md) (Chinese).
 
 Configure your Git identity, push access to origin and Python 3. Local GitHub
 CLI login is not required; GitHub Actions uploads the release assets.

@@ -6,6 +6,7 @@
 - Apply Obsidian lint rules to plugin source and standard Node.js checks to CLI, build and test scripts, with zero warnings required across the repository.
 - Document GitHub automation, checked commits, release commands and recovery procedures in `.github/README.md`.
 - Refactor remote ink with shared enums, named protocol payloads, expanded control flow and documented module responsibilities; enforce consistent formatting.
+- Document repository readiness, code provenance requirements, release preparation and the current Obsidian Community directory submission process in `docs/ob-sop.md`.
 
 ## 1.0.0
 
