@@ -206,6 +206,37 @@ make install vault="/path/to/vault"  # build and install into a vault
 `npm run lint` has to be run from the repository root: the rules read
 `manifest.json` from the working directory.
 
+## Releasing a version
+
+Configure your Git identity, push access to origin and Python 3. Local GitHub
+CLI login is not required; GitHub Actions uploads the release assets.
+
+1. Write the changes under `## Unreleased` in `CHANGELOG.md`, commit the code
+   and notes, and keep the working tree clean.
+2. On `main`, preview the release:
+
+   ```bash
+   make release-dry-run version=1.0.1
+   ```
+
+3. Publish:
+
+   ```bash
+   make release version=1.0.1
+   ```
+
+The command synchronizes the package, lock, manifest and versions files,
+moves Unreleased notes into the new version, runs tests/build/lint, checks
+the version commit message, creates the matching tag, and atomically pushes
+main and the tag. Watch [Actions](https://github.com/volmodaoist/Oh-My-Immersive/actions)
+to confirm completion. Releases include `main.js`, `manifest.json`, `styles.css`
+and the new version's CHANGELOG notes.
+
+Use a strictly increasing `x.y.z` without a `v` prefix. Dry-run changes no
+files, commits, tags or remotes. Failed checks restore the script's own version
+changes; if pushing fails after the commit exists, the script prints a retry
+command for inspection. Community directory submission is a separate step.
+
 ## License
 
 MIT

@@ -167,6 +167,36 @@ make install vault="/path/to/vault"  # build and install into a vault
 
 `npm run lint` 必须在仓库根目录跑：规则会从工作目录读 `manifest.json`。
 
+## 发布新版本
+
+发布到 GitHub Release 可使用快速命令，需配置 Git 身份、origin 的推送权限和 Python 3。
+无需本机登录 GitHub CLI；附件由已启用的 GitHub Actions 发布流程上传。
+
+1. 在 `CHANGELOG.md` 的 `## Unreleased` 下写好本次变更，并提交代码和文档，保持工作区干净。
+2. 在 `main` 分支预览：
+
+   ```bash
+   make release-dry-run version=1.0.1
+   ```
+
+3. 确认目标版本和仓库后执行：
+
+   ```bash
+   make release version=1.0.1
+   ```
+
+命令会同步 `package.json`、`package-lock.json`、`manifest.json`、`versions.json`，
+将 Unreleased 说明移入新版本，运行测试、构建和 lint，再通过 `check-commit.py`
+创建版本提交与同名标签，原子推送 `main` 和标签。
+
+随后查看仓库 [Actions](https://github.com/volmodaoist/Oh-My-Immersive/actions)。
+流程成功后，[Releases](https://github.com/volmodaoist/Oh-My-Immersive/releases) 中会出现
+`main.js`、`manifest.json` 和 `styles.css`，发行说明来自新版本的 CHANGELOG 段落。
+
+版本必须是递增的 `x.y.z`，标签不加 `v`。预览不会改文件、提交、标签或远端。
+校验失败会撤回脚本自己的版本文件修改；若提交已创建而推送失败，脚本会给出检查和重试命令。
+这些命令只发布 GitHub 发行版，社区目录提交仍是独立步骤。
+
 ## 许可
 
 MIT

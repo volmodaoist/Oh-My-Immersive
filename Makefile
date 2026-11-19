@@ -1,8 +1,9 @@
 .DEFAULT_GOAL := help
-.PHONY: help build test lint check install
+.PHONY: help build test lint check install release release-dry-run
 
 # Export the raw value rather than interpolating a user path into shell code.
 export OH_MY_IMMERSIVE_VAULT := $(value vault)
+export OH_MY_IMMERSIVE_VERSION := $(value version)
 
 help:
 	@node scripts/install.mjs --help
@@ -23,3 +24,9 @@ check:
 
 install:
 	node scripts/install.mjs
+
+release:
+	node scripts/release.mjs
+
+release-dry-run:
+	node scripts/release.mjs --dry-run

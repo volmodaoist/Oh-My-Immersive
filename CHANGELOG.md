@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add `make release` and `make release-dry-run` to synchronize versions, validate changes and publish through GitHub Actions.
+
 ## 1.0.0
 
 First release under the Oh-My-Immersive name, based on Immersive Folder 0.6.0.

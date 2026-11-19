@@ -63,7 +63,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          node scripts/release.mjs --notes "$GITHUB_REF_NAME" > "$RUNNER_TEMP/release-notes.md"
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
-            --generate-notes \
+            --notes-file "$RUNNER_TEMP/release-notes.md" \
             main.js manifest.json styles.css

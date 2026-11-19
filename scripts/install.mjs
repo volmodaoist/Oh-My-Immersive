@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, realpathSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -44,7 +44,7 @@ function npm(args) {
 
 export async function main() {
   if (process.argv.includes("--help")) {
-    console.log('make install vault="/path/to/Obsidian vault"\n\nBuilds Oh-My-Immersive and copies its files into .obsidian/plugins/oh-my-immersive.\nExisting plugin settings are preserved. Enable or reload the plugin in Obsidian afterward.\n\nOther targets: make build, make test, make lint, make check.');
+    console.log('make install vault="/path/to/Obsidian vault"\n\nBuilds Oh-My-Immersive and copies its files into .obsidian/plugins/oh-my-immersive.\nExisting plugin settings are preserved. Enable or reload the plugin in Obsidian afterward.\n\nPublish: make release version=1.0.1\nPreview: make release-dry-run version=1.0.1\nOther targets: make build, make test, make lint, make check.');
     return;
   }
   const vault = validateVault(process.env.OH_MY_IMMERSIVE_VAULT ?? process.argv[2]);
@@ -56,6 +56,6 @@ export async function main() {
   console.log(`Installed ${result.name} ${result.version}\n${result.destination}\nEnable Oh-My-Immersive in Settings → Community plugins, or reload it after an update.`);
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && existsSync(process.argv[1]) && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   await main().catch(error => { console.error(error.message); process.exitCode = 1; });
 }
