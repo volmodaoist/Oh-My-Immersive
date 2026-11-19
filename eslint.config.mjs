@@ -8,10 +8,27 @@
    working directory. */
 import tseslint from "typescript-eslint";
 import obsidianmd from "eslint-plugin-obsidianmd";
+import js from "@eslint/js";
+import globals from "globals";
+
+const sourceFiles = "src/**/*.{ts,cts,mts,tsx,js,cjs,mjs,jsx}";
+const pluginConfigs = obsidianmd.configs.recommended.map(config => ({
+  ...config,
+  // Intersect the preset's original selectors with src. Keep its JS/TS
+  // branches distinct so package.json's overrides cannot disable TS checks.
+  files: config.files
+    ? config.files.map(pattern => ["src/**", ...(Array.isArray(pattern) ? pattern : [pattern])])
+    : [sourceFiles],
+}));
 
 export default tseslint.config(
   { ignores: ["main.js", "node_modules/**"] },
-  ...obsidianmd.configs.recommended,
+  ...pluginConfigs,
+  {
+    ...js.configs.recommended,
+    files: ["**/*.mjs"],
+    languageOptions: { ecmaVersion: "latest", sourceType: "module", globals: globals.node },
+  },
   {
     files: ["src/**/*.ts"],
     languageOptions: {
@@ -26,9 +43,4 @@ export default tseslint.config(
     files: ["src/ink/browser.ts", "src/ink/engine.ts"],
     rules: { "no-restricted-globals": "off", "obsidianmd/prefer-create-el": "off" },
   },
-  {
-    // Loaded lazily by main.ts only after its desktop-platform check.
-    files: ["src/ink/server.ts"],
-    rules: { "obsidianmd/no-nodejs-modules": "off" },
-  }
 );

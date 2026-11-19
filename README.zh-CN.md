@@ -161,11 +161,13 @@ make install vault="/你的 Obsidian 库路径"
 npm install
 npm run dev     # 监听构建
 npm run build   # 类型检查并构建 main.js
-npm run lint    # 社区插件审核所用的那套规则
+npm run lint    # 全仓库检查，要求零警告
 make install vault="/path/to/vault"  # build and install into a vault
 ```
 
 `npm run lint` 必须在仓库根目录跑：规则会从工作目录读 `manifest.json`。
+插件源码使用 Obsidian 规则和 TypeScript 类型检查；安装、发布、构建及测试脚本使用
+Node.js 的 JavaScript 检查规则。
 
 ## 发布新版本
 

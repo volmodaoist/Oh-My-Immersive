@@ -199,12 +199,14 @@ Questions and suggestions are welcome in [Issues](https://github.com/volmodaoist
 npm install
 npm run dev     # watch build
 npm run build   # type-check and build main.js
-npm run lint    # the rules the community-plugin review runs
+npm run lint    # plugin and Node.js tool checks, with zero warnings
 make install vault="/path/to/vault"  # build and install into a vault
 ```
 
 `npm run lint` has to be run from the repository root: the rules read
 `manifest.json` from the working directory.
+Plugin source uses Obsidian's rules and type-aware TypeScript checks. CLI,
+build and test scripts use standard Node.js JavaScript checks.
 
 ## Releasing a version
 
