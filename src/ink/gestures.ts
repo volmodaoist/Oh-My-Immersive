@@ -3,7 +3,9 @@
  * The scope is the drawing surface, leaving form fields and controls alone. */
 export function protectDrawingSurface(surface: HTMLElement): void {
   const preventDefault = (event: Event): void => {
-    if (event.cancelable) event.preventDefault();
+    if (event.cancelable) {
+      event.preventDefault();
+    }
   };
   for (const name of ["contextmenu", "selectstart", "dragstart"]) {
     surface.addEventListener(name, preventDefault, { capture: true });
@@ -11,10 +13,17 @@ export function protectDrawingSurface(surface: HTMLElement): void {
   for (const name of ["touchstart", "touchmove", "touchend"]) {
     // Safari's touch defaults are separate from Pointer Events. In particular,
     // ignored palm input still needs its native long-press action cancelled.
-    surface.addEventListener(name, preventDefault, { capture: true, passive: false });
+    surface.addEventListener(name, preventDefault, {
+      capture: true,
+      passive: false,
+    });
   }
-  surface.addEventListener("pointerdown", event => {
-    preventDefault(event);
-    surface.ownerDocument.getSelection()?.removeAllRanges();
-  }, { capture: true });
+  surface.addEventListener(
+    "pointerdown",
+    (event) => {
+      preventDefault(event);
+      surface.ownerDocument.getSelection()?.removeAllRanges();
+    },
+    { capture: true },
+  );
 }

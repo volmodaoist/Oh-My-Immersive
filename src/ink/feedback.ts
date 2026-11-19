@@ -1,11 +1,21 @@
-const timers = new WeakMap<HTMLElement, { win: Window; timer: number }>();
+const timers = new WeakMap<
+  HTMLElement,
+  {
+    win: Window;
+    timer: number;
+  }
+>();
 
-/** Brief native-style click feedback without changing the control's label. */
+/** 在控件所属窗口短暂高亮，不修改文字或图标，也不创建全局通知。 */
 export function flashInkButton(button: HTMLElement): void {
   const win = button.ownerDocument.defaultView;
-  if (!win) return;
+  if (!win) {
+    return;
+  }
   const previous = timers.get(button);
-  if (previous) previous.win.clearTimeout(previous.timer);
+  if (previous) {
+    previous.win.clearTimeout(previous.timer);
+  }
   button.classList.add("oh-my-immersive-ink-clicked");
   const timer = win.setTimeout(() => {
     button.classList.remove("oh-my-immersive-ink-clicked");

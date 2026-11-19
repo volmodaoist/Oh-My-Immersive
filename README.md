@@ -207,8 +207,13 @@ make install vault="/path/to/vault"  # build and install into a vault
 `manifest.json` from the working directory.
 Plugin source uses Obsidian's rules and type-aware TypeScript checks. CLI,
 build and test scripts use standard Node.js JavaScript checks.
+See the [ink module guide](src/ink/README.md) (Chinese) for its protocol and
+responsibilities. Run `npm run format:ink` to format that module.
 
 ## Releasing a version
+
+See the [GitHub workflow and release guide](.github/README.md) (Chinese) for
+checked commits, Actions monitoring and recovery procedures.
 
 Configure your Git identity, push access to origin and Python 3. Local GitHub
 CLI login is not required; GitHub Actions uploads the release assets.

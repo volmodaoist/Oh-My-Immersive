@@ -168,8 +168,12 @@ make install vault="/path/to/vault"  # build and install into a vault
 `npm run lint` 必须在仓库根目录跑：规则会从工作目录读 `manifest.json`。
 插件源码使用 Obsidian 规则和 TypeScript 类型检查；安装、发布、构建及测试脚本使用
 Node.js 的 JavaScript 检查规则。
+远程书写模块的职责与协议见 [src/ink 说明](src/ink/README.md)，使用
+`npm run format:ink` 统一格式。
 
 ## 发布新版本
+
+完整的提交检查、Actions 发布和失败重试教程见 [GitHub 操作与发布教程](.github/README.md)。
 
 发布到 GitHub Release 可使用快速命令，需配置 Git 身份、origin 的推送权限和 Python 3。
 无需本机登录 GitHub CLI；附件由已启用的 GitHub Actions 发布流程上传。

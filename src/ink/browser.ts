@@ -1,19 +1,51 @@
-import { acceptsPointer, normalizedPoint, pressureOf, hitStroke, InkPainter } from "./engine";
+/** 浏览器端先绘制本地笔迹，再通过串行 POST 上传操作；SSE 负责同步服务端状态。 */
+import {
+  DrawingTool,
+  InkOperationType,
+  InkStreamEvent,
+  HttpMethod,
+  InkRoute,
+  parseDrawingTool,
+} from "./enums";
+import {
+  acceptsPointer,
+  normalizedPoint,
+  pressureOf,
+  hitStroke,
+  InkPainter,
+} from "./engine";
 import { protectDrawingSurface } from "./gestures";
 import { FramePainter } from "./frames";
-import type { InkEvent, InkOp, Point, Stroke, InkSnapshot } from "./protocol";
+import {
+  MAX_BATCH_POINTS,
+  type InkEvent,
+  type InkOp,
+  type Point,
+  type Stroke,
+  type InkViewerSnapshot,
+  type InkDimensions,
+} from "./protocol";
 
 function element<T extends HTMLElement>(id: string): T {
   const result = document.getElementById(id);
-  if (!result) throw new Error(`Missing element: ${id}`);
+  if (!result) {
+    throw new Error(`Missing element: ${id}`);
+  }
   return result as T;
 }
 const params = new URLSearchParams(location.search);
 const overlay = params.get("overlay") === "1";
-if (overlay) document.body.classList.add("overlay");
-let token = new URLSearchParams(location.hash.slice(1)).get("code") ?? params.get("code") ?? "";
-const client = sessionStorage.getItem("oh-my-immersive-ink-client") ?? `c${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
-sessionStorage.setItem("oh-my-immersive-ink-client", client);
+if (overlay) {
+  document.body.classList.add("overlay");
+}
+let token =
+  new URLSearchParams(location.hash.slice(1)).get("code") ??
+  params.get("code") ??
+  "";
+const clientId =
+  sessionStorage.getItem("oh-my-immersive-ink-client") ??
+  `c${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+sessionStorage.setItem("oh-my-immersive-ink-client", clientId);
 const canvas = element<HTMLCanvasElement>("ink");
 const stage = element("stage");
 const area = element("area");
@@ -22,7 +54,7 @@ const framePainter = new FramePainter(background);
 protectDrawingSurface(area);
 const status = element("status");
 const painter = new InkPainter(canvas);
-const strokes = new Map<string, Stroke>();
+const strokeMap = new Map<string, Stroke>();
 const pair = element("pair");
 const pairError = element("pair-error");
 const toolbar = element("toolbar");
@@ -30,26 +62,38 @@ let connected = false;
 let revision = -1;
 let frameWidth = 1280;
 let frameHeight = 720;
-let source: EventSource | null = null;
-let live: Stroke | null = null;
-let pointer: number | null = null;
-let tool: "pen" | "marker" | "eraser" = "pen";
-let sent = 1;
-let batch: number | null = null;
-let erased = new Set<string>();
-let chain = Promise.resolve();
-let epoch = 0;
+let eventStream: EventSource | null = null;
+let activeStroke: Stroke | null = null;
+let activePointerId: number | null = null;
+let tool: DrawingTool = DrawingTool.Pen;
+let sentPointCount = 1;
+let flushTimer: number | null = null;
+let pendingEraseIds = new Set<string>();
+let sendQueue = Promise.resolve();
+let connectionGeneration = 0;
+const endpoint = (path: string) =>
+  `${path}${path.includes("?") ? "&" : "?"}code=${encodeURIComponent(token)}`;
 
-const endpoint = (path: string) => `${path}${path.includes("?") ? "&" : "?"}code=${encodeURIComponent(token)}`;
+/** 当前本地笔迹单独绘制，避免与服务端回显重复叠加。 */
 function render(): void {
-  painter.rebuild([...strokes.values()].filter(s => s.id !== live?.id));
-  painter.live(live);
+  painter.rebuild(
+    [...strokeMap.values()].filter((s) => s.id !== activeStroke?.id),
+  );
+  painter.live(activeStroke);
 }
+
+/** 让底图和书写层使用同一舞台比例，设备尺寸变化时一起调整。 */
 function resize(): void {
   if (!overlay) {
     area.style.top = `${toolbar.getBoundingClientRect().height}px`;
     const bounds = area.getBoundingClientRect();
-    const scale = Math.max(0.001, Math.min((bounds.width - 24) / frameWidth, (bounds.height - 24) / frameHeight));
+    const scale = Math.max(
+      0.001,
+      Math.min(
+        (bounds.width - 24) / frameWidth,
+        (bounds.height - 24) / frameHeight,
+      ),
+    );
     stage.style.width = `${frameWidth * scale}px`;
     stage.style.height = `${frameHeight * scale}px`;
   }
@@ -61,200 +105,384 @@ new ResizeObserver(resize).observe(area);
 new ResizeObserver(resize).observe(toolbar);
 window.addEventListener("resize", resize);
 
+/** 每次 SSE 连接先接收完整快照，再按 revision 顺序应用增量操作。 */
 function connect(): void {
-  if (!token) { pair.hidden = false; return; }
+  if (!token) {
+    pair.hidden = false;
+    return;
+  }
   pair.hidden = true;
-  source?.close();
+  eventStream?.close();
   connected = false;
   status.textContent = "连接中…";
-  source = new EventSource(endpoint(`/events?client=${client}`));
-  source.addEventListener("snapshot", event => {
-    const data = JSON.parse((event as MessageEvent<string>).data) as InkSnapshot & { width: number; height: number };
-    strokes.clear();
-    data.strokes.forEach(s => strokes.set(s.id, s));
-    live = null;
-    pointer = null;
-    revision = data.revision;
-    frameWidth = data.width;
-    frameHeight = data.height;
-    connected = true;
-    status.textContent = "已连接 · 笔尖 / 鼠标 · 触摸不落墨";
-    resize();
-  });
-  source.addEventListener("op", event => {
-    const data = JSON.parse((event as MessageEvent<string>).data) as InkEvent;
-    if (data.revision <= revision) return;
-    if (data.revision !== revision + 1) { connect(); return; }
-    revision = data.revision;
-    const op = data.op;
-    if (op.t === "begin") {
-      if (op.stroke.owner !== client || !strokes.has(op.stroke.id)) strokes.set(op.stroke.id, op.stroke);
-    } else if (op.t === "append") {
-      const s = strokes.get(op.id);
-      if (s && s.owner !== client) {
-        if (s.points.length !== op.offset) { connect(); return; }
-        s.points.push(...op.points);
-      }
-    } else if (op.t === "end") {
-      const s = strokes.get(op.id);
-      if (s) s.complete = true;
-    } else if (op.t === "delete" || op.t === "cancel") {
-      const ids = op.t === "delete" ? op.ids : [op.id];
-      ids.forEach(id => strokes.delete(id));
-      if (live && ids.includes(live.id)) cancelLocal();
-    } else if (op.t === "clear") { strokes.clear(); cancelLocal(); }
-    render();
-  });
-  source.addEventListener("dimensions", event => {
-    const data = JSON.parse((event as MessageEvent<string>).data) as { width: number; height: number };
-    frameWidth = data.width; frameHeight = data.height; resize();
-  });
-  source.onerror = () => {
+  eventStream = new EventSource(
+    endpoint(`${InkRoute.Events}?client=${clientId}`),
+  );
+  eventStream.addEventListener(InkStreamEvent.Snapshot, receiveSnapshot);
+  eventStream.addEventListener(InkStreamEvent.Operation, receiveOperation);
+  eventStream.addEventListener(InkStreamEvent.Dimensions, receiveDimensions);
+  eventStream.onerror = () => {
     connected = false;
     status.textContent = "连接中断，正在重连…";
     // EventSource's automatic reconnect receives an authoritative snapshot.
     cancelLocal();
   };
 }
-function cancelLocal(): void {
-  if (live) strokes.delete(live.id);
-  live = null; pointer = null;
-  if (batch !== null) window.clearTimeout(batch);
-  batch = null;
-  erased.clear();
+
+/** 连接初始化时用完整快照替换本地缓存，随后再接受增量事件。 */
+function receiveSnapshot(event: Event): void {
+  const data = JSON.parse(
+    (event as MessageEvent<string>).data,
+  ) as InkViewerSnapshot;
+  strokeMap.clear();
+  data.strokes.forEach((s) => strokeMap.set(s.id, s));
+  activeStroke = null;
+  activePointerId = null;
+  revision = data.revision;
+  frameWidth = data.width;
+  frameHeight = data.height;
+  connected = true;
+  status.textContent = "已连接 · 笔尖 / 鼠标 · 触摸不落墨";
+  resize();
 }
+
+/** 按服务端序号应用远端操作；自己的回显不覆盖本地尚未上传的采样点。 */
+function receiveOperation(event: Event): void {
+  const data = JSON.parse((event as MessageEvent<string>).data) as InkEvent;
+  if (data.revision <= revision) {
+    return;
+  }
+  // 事件有缺口时重新取快照，不猜测或跳过缺失的笔迹。
+  if (data.revision !== revision + 1) {
+    connect();
+    return;
+  }
+  revision = data.revision;
+  const op = data.op;
+  if (op.t === InkOperationType.Begin) {
+    // 本机已经即时绘制自己的操作，服务端回显不能覆盖尚未上传的点。
+    if (op.stroke.owner !== clientId || !strokeMap.has(op.stroke.id)) {
+      strokeMap.set(op.stroke.id, op.stroke);
+    }
+  } else if (op.t === InkOperationType.Append) {
+    const s = strokeMap.get(op.id);
+    if (s && s.owner !== clientId) {
+      if (s.points.length !== op.offset) {
+        connect();
+        return;
+      }
+      s.points.push(...op.points);
+    }
+  } else if (op.t === InkOperationType.End) {
+    const s = strokeMap.get(op.id);
+    if (s) {
+      s.complete = true;
+    }
+  } else if (
+    op.t === InkOperationType.Delete ||
+    op.t === InkOperationType.Cancel
+  ) {
+    const ids = op.t === InkOperationType.Delete ? op.ids : [op.id];
+    ids.forEach((id) => strokeMap.delete(id));
+    if (activeStroke && ids.includes(activeStroke.id)) {
+      cancelLocal();
+    }
+  } else if (op.t === InkOperationType.Clear) {
+    strokeMap.clear();
+    cancelLocal();
+  }
+  render();
+}
+
+/** 窗口尺寸更新后，底图与笔迹共享新的舞台比例。 */
+function receiveDimensions(event: Event): void {
+  const data = JSON.parse(
+    (event as MessageEvent<string>).data,
+  ) as InkDimensions;
+  frameWidth = data.width;
+  frameHeight = data.height;
+  resize();
+}
+
+/** 取消只丢弃当前未完成输入，已完成的笔迹仍由服务端快照管理。 */
+function cancelLocal(): void {
+  if (activeStroke) {
+    strokeMap.delete(activeStroke.id);
+  }
+  activeStroke = null;
+  activePointerId = null;
+  if (flushTimer !== null) {
+    window.clearTimeout(flushTimer);
+  }
+  flushTimer = null;
+  pendingEraseIds.clear();
+}
+
+/** 固定操作内容后串行发送，保证 Begin、Append、End 不会网络乱序。 */
 function enqueue(op: InkOp): void {
   const body = JSON.stringify(op);
-  const generation = epoch;
-  chain = chain.then(async () => {
-    if (generation !== epoch) return;
-    const response = await fetch(endpoint("/api/op"), { method: "POST", headers: { "Content-Type": "application/json" }, body });
-    if (!response.ok) throw new Error(await response.text());
-  }).catch((error: unknown) => {
-    epoch++;
-    cancelLocal();
-    status.textContent = `同步失败：${error instanceof Error ? error.message : "请重新连接"}`;
-    connect();
-  });
+  const generation = connectionGeneration;
+  sendQueue = sendQueue
+    .then(async () => {
+      if (generation !== connectionGeneration) {
+        return;
+      }
+      const response = await fetch(endpoint(InkRoute.Operation), {
+        method: HttpMethod.Post,
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+    })
+    .catch((error: unknown) => {
+      connectionGeneration++;
+      cancelLocal();
+      status.textContent = `同步失败：${error instanceof Error ? error.message : "请重新连接"}`;
+      connect();
+    });
 }
+
+/** offset 对应累计已上传的点数；一批最多使用协议允许的采样量。 */
 function flush(): void {
-  if (batch !== null) window.clearTimeout(batch);
-  batch = null;
-  if (live) {
-    while (sent < live.points.length) {
-      const pts = live.points.slice(sent, sent + 2048);
-      enqueue({ t: "append", id: live.id, offset: sent, points: pts });
-      sent += pts.length;
+  if (flushTimer !== null) {
+    window.clearTimeout(flushTimer);
+  }
+  flushTimer = null;
+  if (activeStroke) {
+    while (sentPointCount < activeStroke.points.length) {
+      const pts = activeStroke.points.slice(
+        sentPointCount,
+        sentPointCount + MAX_BATCH_POINTS,
+      );
+      enqueue({
+        t: InkOperationType.Append,
+        id: activeStroke.id,
+        offset: sentPointCount,
+        points: pts,
+      });
+      sentPointCount += pts.length;
     }
   }
-  if (erased.size) {
-    enqueue({ t: "delete", ids: [...erased] });
-    erased.clear();
+  if (pendingEraseIds.size) {
+    enqueue({ t: InkOperationType.Delete, ids: [...pendingEraseIds] });
+    pendingEraseIds.clear();
   }
 }
-function schedule(): void { if (batch === null) batch = window.setTimeout(flush, 20); }
+
+function schedule(): void {
+  if (flushTimer === null) {
+    flushTimer = window.setTimeout(flush, 20);
+  }
+}
+
 function point(event: PointerEvent): Point {
-  return normalizedPoint(event.clientX, event.clientY, canvas.getBoundingClientRect(), pressureOf(event));
+  return normalizedPoint(
+    event.clientX,
+    event.clientY,
+    canvas.getBoundingClientRect(),
+    pressureOf(event),
+  );
 }
+
 function erase(event: PointerEvent): void {
-  const pt = point(event), rect = canvas.getBoundingClientRect();
-  for (const s of strokes.values()) {
+  const pt = point(event),
+    rect = canvas.getBoundingClientRect();
+  for (const s of strokeMap.values()) {
     if (hitStroke(s, pt, rect.width, rect.height)) {
-      strokes.delete(s.id); erased.add(s.id);
+      strokeMap.delete(s.id);
+      pendingEraseIds.add(s.id);
     }
-  }
-  schedule(); render();
-}
-canvas.addEventListener("pointerdown", event => {
-  if (overlay || !connected || pointer !== null || !acceptsPointer(event)) return;
-  event.preventDefault();
-  pointer = event.pointerId;
-  canvas.setPointerCapture(pointer);
-  if (tool === "eraser") { erase(event); return; }
-  live = {
-    id: `s${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`,
-    owner: client, tool, color: element<HTMLInputElement>("color").value,
-    size: Number(element<HTMLInputElement>("size").value), points: [point(event)], complete: false,
-  };
-  strokes.set(live.id, live);
-  sent = 1;
-  enqueue({ t: "begin", stroke: live });
-  render();
-});
-canvas.addEventListener("pointermove", event => {
-  if (event.pointerId !== pointer) return;
-  event.preventDefault();
-  if (tool === "eraser") { erase(event); return; }
-  if (!live) return;
-  const samples = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : [];
-  for (const sample of samples.length ? samples : [event]) {
-    const pt = point(sample), last = live.points[live.points.length - 1];
-    if (Math.hypot((pt[0] - last[0]) * frameWidth, (pt[1] - last[1]) * frameHeight) > 0.35) live.points.push(pt);
   }
   schedule();
-  painter.live(live);
-});
-canvas.addEventListener("pointerup", event => {
-  if (event.pointerId !== pointer) return;
-  if (live) live.points.push(point(event));
-  flush();
-  if (live) { live.complete = true; enqueue({ t: "end", id: live.id }); }
-  live = null; pointer = null;
+  render();
+}
+// 只接受一支活动指针；手掌触摸不能开始笔迹，也不能结束 Pencil 的输入。
+canvas.addEventListener("pointerdown", (event) => {
+  if (
+    overlay ||
+    !connected ||
+    activePointerId !== null ||
+    !acceptsPointer(event)
+  ) {
+    return;
+  }
+  event.preventDefault();
+  activePointerId = event.pointerId;
+  canvas.setPointerCapture(activePointerId);
+  if (tool === DrawingTool.Eraser) {
+    erase(event);
+    return;
+  }
+  activeStroke = {
+    id: `s${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`,
+    owner: clientId,
+    tool,
+    color: element<HTMLInputElement>("color").value,
+    size: Number(element<HTMLInputElement>("size").value),
+    points: [point(event)],
+    complete: false,
+  };
+  strokeMap.set(activeStroke.id, activeStroke);
+  sentPointCount = 1;
+  enqueue({ t: InkOperationType.Begin, stroke: activeStroke });
   render();
 });
+canvas.addEventListener("pointermove", (event) => {
+  if (event.pointerId !== activePointerId) {
+    return;
+  }
+  event.preventDefault();
+  if (tool === DrawingTool.Eraser) {
+    erase(event);
+    return;
+  }
+  if (!activeStroke) {
+    return;
+  }
+  // Safari 支持时使用合并采样点，保留快速移动时的完整曲线。
+  const samples =
+    typeof event.getCoalescedEvents === "function"
+      ? event.getCoalescedEvents()
+      : [];
+  for (const sample of samples.length ? samples : [event]) {
+    const pt = point(sample),
+      last = activeStroke.points[activeStroke.points.length - 1];
+    if (
+      Math.hypot(
+        (pt[0] - last[0]) * frameWidth,
+        (pt[1] - last[1]) * frameHeight,
+      ) > 0.35
+    ) {
+      activeStroke.points.push(pt);
+    }
+  }
+  schedule();
+  painter.live(activeStroke);
+});
+canvas.addEventListener("pointerup", (event) => {
+  if (event.pointerId !== activePointerId) {
+    return;
+  }
+  if (activeStroke) {
+    activeStroke.points.push(point(event));
+  }
+  flush();
+  if (activeStroke) {
+    activeStroke.complete = true;
+    enqueue({ t: InkOperationType.End, id: activeStroke.id });
+  }
+  activeStroke = null;
+  activePointerId = null;
+  render();
+});
+
+/** 系统中断与正常抬笔分开处理，取消的笔迹不会被误标为完成。 */
 function cancelPointer(event: PointerEvent): void {
-  if (event.pointerId !== pointer) return;
-  if (live) enqueue({ t: "cancel", id: live.id });
-  cancelLocal(); render();
+  if (event.pointerId !== activePointerId) {
+    return;
+  }
+  if (activeStroke) {
+    enqueue({ t: InkOperationType.Cancel, id: activeStroke.id });
+  }
+  cancelLocal();
+  render();
 }
 canvas.addEventListener("pointercancel", cancelPointer);
 canvas.addEventListener("lostpointercapture", cancelPointer);
-document.querySelectorAll<HTMLButtonElement>("[data-tool]").forEach(button => {
-  button.addEventListener("click", () => {
-    if (pointer !== null) return;
-    tool = button.dataset.tool as typeof tool;
-    document.querySelectorAll("[data-tool]").forEach(b => b.classList.toggle("active", b === button));
+document
+  .querySelectorAll<HTMLButtonElement>("[data-tool]")
+  .forEach((button) => {
+    button.addEventListener("click", () => {
+      if (activePointerId !== null) {
+        return;
+      }
+      const selectedTool = parseDrawingTool(button.dataset.tool);
+      if (selectedTool === null) {
+        return;
+      }
+      tool = selectedTool;
+      document
+        .querySelectorAll("[data-tool]")
+        .forEach((b) => b.classList.toggle("active", b === button));
+    });
   });
-});
 element("undo").addEventListener("click", () => {
-  if (!connected || pointer !== null) return;
-  const last = [...strokes.values()].reverse().find(s => s.owner === client && s.complete);
-  if (last) { strokes.delete(last.id); enqueue({ t: "delete", ids: [last.id] }); render(); }
+  if (!connected || activePointerId !== null) {
+    return;
+  }
+  const last = [...strokeMap.values()]
+    .reverse()
+    .find((s) => s.owner === clientId && s.complete);
+  if (last) {
+    strokeMap.delete(last.id);
+    enqueue({ t: InkOperationType.Delete, ids: [last.id] });
+    render();
+  }
 });
 element("clear").addEventListener("click", () => {
-  if (!connected || pointer !== null) return;
-  strokes.clear(); enqueue({ t: "clear" }); render();
+  if (!connected || activePointerId !== null) {
+    return;
+  }
+  strokeMap.clear();
+  enqueue({ t: InkOperationType.Clear });
+  render();
 });
-element<HTMLFormElement>("pair-form").addEventListener("submit", event => {
+element<HTMLFormElement>("pair-form").addEventListener("submit", (event) => {
   event.preventDefault();
   token = element<HTMLInputElement>("pair-code").value.trim();
-  void fetch(endpoint("/api/state")).then(async response => {
-    if (!response.ok) { pairError.textContent = "连接码不正确，或服务已停止。"; return; }
-    location.hash = new URLSearchParams({ code: token }).toString();
-    connect();
-  }).catch(() => { pairError.textContent = "无法连接服务。"; });
+  void fetch(endpoint(InkRoute.State))
+    .then(async (response) => {
+      if (!response.ok) {
+        pairError.textContent = "连接码不正确，或服务已停止。";
+        return;
+      }
+      location.hash = new URLSearchParams({ code: token }).toString();
+      connect();
+    })
+    .catch(() => {
+      pairError.textContent = "无法连接服务。";
+    });
 });
 window.addEventListener("hashchange", () => {
   const next = new URLSearchParams(location.hash.slice(1)).get("code") ?? "";
-  if (next === token) return;
+  if (next === token) {
+    return;
+  }
   token = next;
-  epoch++;
+  connectionGeneration++;
   cancelLocal();
   connect();
 });
 
+/** 下一帧解码完成前保留上一帧，底图更新与透明书写层相互独立。 */
 async function nextFrame(): Promise<void> {
   if (!overlay && connected) {
     try {
-      const response = await fetch(endpoint(`/frame?n=${Date.now()}`));
-      if (!response.ok) throw new Error("Frame unavailable");
+      const response = await fetch(
+        endpoint(`${InkRoute.Frame}?n=${Date.now()}`),
+      );
+      if (!response.ok) {
+        throw new Error("Frame unavailable");
+      }
       await framePainter.show(await response.blob());
-      if (status.textContent === "底图暂不可用，等待本机窗口…") status.textContent = "已连接 · 笔尖 / 鼠标 · 触摸不落墨";
-    } catch { status.textContent = "底图暂不可用，等待本机窗口…"; }
+      if (status.textContent === "底图暂不可用，等待本机窗口…") {
+        status.textContent = "已连接 · 笔尖 / 鼠标 · 触摸不落墨";
+      }
+    } catch {
+      status.textContent = "底图暂不可用，等待本机窗口…";
+    }
   }
-  window.setTimeout(() => { void nextFrame(); }, 350);
+  window.setTimeout(() => {
+    void nextFrame();
+  }, 350);
 }
 connect();
 resize();
 void nextFrame();
-window.addEventListener("pagehide", event => { if (!event.persisted) framePainter.destroy(); });
+window.addEventListener("pagehide", (event) => {
+  if (!event.persisted) {
+    framePainter.destroy();
+  }
+});
