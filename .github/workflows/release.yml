@@ -29,6 +29,12 @@ jobs:
       # main.js is a build artefact and stays out of the repo, so the release
       # is the only place it exists. Type-check first: shipping a build that
       # does not compile would be worse than shipping none.
+      - name: Run tests
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
       - name: Type-check and build
         run: npm run build
 
@@ -42,7 +48,7 @@ jobs:
 
       # Signs a statement that these files came out of this workflow, from this
       # commit. Anyone can then check a downloaded asset against it with
-      # `gh attestation verify main.js --repo iBlinkQ/immersive-folder`.
+      # `gh attestation verify main.js --repo volmodaoist/Oh-My-Immersive`.
       # Only the two build artefacts are attested: manifest.json ships to the
       # release exactly as it sits in the repository, so its provenance is
       # already the commit history.
