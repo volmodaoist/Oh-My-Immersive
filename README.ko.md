@@ -1,4 +1,6 @@
-# Immersive Folder
+# Oh-My-Immersive
+
+[volmodaoist](https://github.com/volmodaoist)가 유지보수합니다. iBlinkQ의 [Immersive Folder](https://github.com/iBlinkQ/immersive-folder) 0.6.0을 기반으로 하며 원래 저작권과 MIT 라이선스를 유지합니다.
 
 [English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · 한국어
 
@@ -26,7 +28,7 @@ Obsidian 플러그인입니다. 어떤 폴더에서 작업하는 동안, 클릭 
 
 - **파일 탐색기 위쪽 버튼**으로 켜고 끕니다. 가림막이 올라가 있는 동안에는 강조
   색을 띠어서 상태가 한눈에 보입니다.
-- 명령 팔레트의 **`Immersive Folder: Toggle immersive folder`** 도 같은 일을
+- 명령 팔레트의 **`Oh-My-Immersive: Toggle immersive folder`** 도 같은 일을
   합니다. 단축키를 지정할 수 있으니 녹화할 때마다 켜고 끈다면 하나 지정해 두는
   편이 낫습니다.
 
@@ -121,21 +123,25 @@ Obsidian 플러그인입니다. 어떤 폴더에서 작업하는 동안, 클릭 
 
 ## 설치
 
-Obsidian에서 설정 → 커뮤니티 플러그인 → 둘러보기를 열고 **Immersive Folder** 를
-검색해 설치하면 됩니다. [플러그인 페이지](https://community.obsidian.md/plugins/immersive-folder)로
-바로 가도 됩니다.
+현재 소스 또는 [GitHub Releases](https://github.com/volmodaoist/Oh-My-Immersive/releases)에서 수동 설치할 수 있습니다.
+커뮤니티 등록 상태는 심사 후 갱신합니다. **데스크톱 Obsidian 1.15.1 이상**이 필요하며,
+iPad는 브라우저로 연결할 수 있습니다.
 
-**Obsidian 1.13 이상**이 필요합니다. 모바일에서도 모든 기능이 그대로 동작합니다.
+Node.js(LTS 권장), npm, GNU Make를 설치하고 대상 보관소를 Obsidian에서 한 번 연 뒤 실행합니다.
 
-직접 설치하려면 [최신
-release](https://github.com/iBlinkQ/immersive-folder/releases/latest)에서
-`main.js`, `manifest.json`, `styles.css`를 내려받아
-`당신의보관소/.obsidian/plugins/immersive-folder/`에 넣고, 설정 → 커뮤니티
-플러그인에서 켜면 됩니다. (`main.js`는 빌드 산출물이라 저장소에는 없습니다.
-릴리스 안에, 또는 직접 `npm run build`를 실행한 뒤에만 존재합니다.)
+```bash
+git clone https://github.com/volmodaoist/Oh-My-Immersive.git
+cd Oh-My-Immersive
+make install vault="/path/to/your Obsidian vault"
+```
 
-궁금한 점이나 제안은 [Issues](https://github.com/iBlinkQ/immersive-folder/issues)로
-남겨 주세요.
+공백이 있는 경로는 따옴표로 감싸 주세요. 의존성을 준비하고 빌드한 뒤
+`<vault>/.obsidian/plugins/oh-my-immersive/`에 세 파일을 복사하며 기존 `data.json`은 유지합니다.
+설정에서 **Oh-My-Immersive**를 활성화하고 원래 Immersive Folder는 먼저 비활성화합니다.
+업데이트 후 플러그인을 다시 불러오세요.
+
+같은 Release의 `main.js`, `manifest.json`, `styles.css`를 수동 배치할 수도 있습니다.
+문제는 [Issues](https://github.com/volmodaoist/Oh-My-Immersive/issues)에 남겨 주세요.
 
 ## 개발
 
@@ -144,7 +150,7 @@ npm install
 npm run dev     # 감시 빌드
 npm run build   # 타입 검사 후 main.js 빌드
 npm run lint    # 커뮤니티 플러그인 심사가 돌리는 규칙
-npm run sync    # 빌드한 뒤 sync.mjs에 적힌 보관소로 복사
+make install vault="/path/to/vault"  # build and install into a vault
 ```
 
 `npm run lint`는 저장소 루트에서 실행해야 합니다. 규칙이 작업 디렉터리에서

@@ -40,7 +40,7 @@ type Language = "auto" | "en" | "zh";
    syncButtons). */
 type ToolbarButtons = "both" | "immersive" | "sort" | "none";
 
-interface ImmersiveFolderSettings {
+interface OhMyImmersiveSettings {
   language: Language;
   toolbarButtons: ToolbarButtons;
   enabled: boolean;
@@ -88,7 +88,7 @@ function openHotkeySettings(app: App, query: string): void {
   setting?.openTabById?.("hotkeys")?.setQuery?.(query);
 }
 
-const DEFAULT_SETTINGS: ImmersiveFolderSettings = {
+const DEFAULT_SETTINGS: OhMyImmersiveSettings = {
   language: "auto",
   toolbarButtons: "both",
   enabled: false,
@@ -386,17 +386,17 @@ function stringsFor(language: Language): Strings {
 
 /* Everything the plugin draws hangs off this one body class, so lifting the
    cover is a single class away and can never leave half-covered rows behind. */
-const BODY_CLASS = "immersive-folder-on";
-const BUTTON_CLASS = "immersive-folder-button";
-const SORT_BUTTON_CLASS = "immersive-folder-sort-button";
-const INK_BUTTON_CLASS = "immersive-folder-ink-button";
-const INK_CLEAR_BUTTON_CLASS = "immersive-folder-ink-clear-button";
+const BODY_CLASS = "oh-my-immersive-on";
+const BUTTON_CLASS = "oh-my-immersive-button";
+const SORT_BUTTON_CLASS = "oh-my-immersive-sort-button";
+const INK_BUTTON_CLASS = "oh-my-immersive-ink-button";
+const INK_CLEAR_BUTTON_CLASS = "oh-my-immersive-ink-clear-button";
 /* On whichever of the two buttons is waiting for the other mode to finish. */
-const DISABLED_CLASS = "immersive-folder-blocked";
+const DISABLED_CLASS = "oh-my-immersive-blocked";
 /* Marks a row the cover should spare. Set from here, matched in styles.css:
    the rules there cannot know which folder is focused, so they cover
    everything and let this class carve out the exceptions. */
-const REVEAL_CLASS = "immersive-folder-reveal";
+const REVEAL_CLASS = "oh-my-immersive-reveal";
 /* How faint a covered row is drawn, as one of this many shades, so the bars
    closest to what you are reading stay firm and the ends of the list recede.
    The stylesheet draws the shades; the number here only has to agree with
@@ -405,16 +405,16 @@ const REVEAL_CLASS = "immersive-folder-reveal";
    the fade was a thin edge around the readable block rather than something
    the list as a whole did. */
 const FADE_STEPS = 10;
-const FADE_CLASS = "immersive-folder-fade-";
+const FADE_CLASS = "oh-my-immersive-fade-";
 /* On the body only while the cover is drawing itself in or lifting off, so
    the sweep in styles.css plays on the switch and on nothing else — not on a
    row scrolled into view a minute later, nor on the bars that change hands
    when you move to a note in another folder. */
-const ENTERING_CLASS = "immersive-folder-entering";
-const LEAVING_CLASS = "immersive-folder-leaving";
+const ENTERING_CLASS = "oh-my-immersive-entering";
+const LEAVING_CLASS = "oh-my-immersive-leaving";
 /* The prefix both of the sweep's keyframes share, which is how its
    animations are told apart from everything else running in the window. */
-const SWEEP_ANIMATION = "immersive-folder-sweep";
+const SWEEP_ANIMATION = "oh-my-immersive-sweep";
 /* The longest a sweep is waited on, whatever the animations say. */
 const SWEEP_CAP_MS = 4000;
 
@@ -428,8 +428,8 @@ interface Sweep {
   timer: number | null;
 }
 
-const ICON = "immersive-folder";
-const SORT_ICON = "immersive-folder-sort";
+const ICON = "oh-my-immersive";
+const SORT_ICON = "oh-my-immersive-sort";
 
 /* The button draws the plugin's own idea rather than a stock glyph: rows of
    text with the middle one carrying the weight while its neighbours fall back.
@@ -471,8 +471,8 @@ function registerIcon(): void {
   );
 }
 
-export default class ImmersiveFolderPlugin extends Plugin {
-  settings: ImmersiveFolderSettings = { ...DEFAULT_SETTINGS, orders: {}, expandedBefore: [] };
+export default class OhMyImmersivePlugin extends Plugin {
+  settings: OhMyImmersiveSettings = { ...DEFAULT_SETTINGS, orders: {}, expandedBefore: [] };
   private lastSyncedPath: string | null = null;
   /* Null while the cover is down. An empty string means the vault root. */
   private focusPath: string | null = null;
@@ -540,7 +540,7 @@ export default class ImmersiveFolderPlugin extends Plugin {
     this.registerInkCommands();
     this.registerOrderMenus();
 
-    this.addSettingTab(new ImmersiveFolderSettingTab(this.app, this));
+    this.addSettingTab(new OhMyImmersiveSettingTab(this.app, this));
 
     /* The cover is derived from the active file, so anything that can change
        which file that is has to redraw it. Folder collapse and the explorer
@@ -716,7 +716,7 @@ export default class ImmersiveFolderPlugin extends Plugin {
 
   private async loadSettings(): Promise<void> {
     const saved = (await this.loadData()) as
-      | (Partial<ImmersiveFolderSettings> & { revealOnEnable?: boolean })
+      | (Partial<OhMyImmersiveSettings> & { revealOnEnable?: boolean })
       | null;
     this.settings = Object.assign({}, DEFAULT_SETTINGS, saved);
     if (!Number.isInteger(this.settings.inkPort) || this.settings.inkPort < 1024 || this.settings.inkPort > 65535) this.settings.inkPort = 8674;
@@ -1534,15 +1534,15 @@ export default class ImmersiveFolderPlugin extends Plugin {
 }
 
 /* The cover itself — one bar per row, drawn over a transparent label. */
-class ImmersiveFolderSettingTab extends PluginSettingTab {
-  constructor(app: App, private plugin: ImmersiveFolderPlugin) {
+class OhMyImmersiveSettingTab extends PluginSettingTab {
+  constructor(app: App, private plugin: OhMyImmersivePlugin) {
     super(app, plugin);
   }
 
   /* The tab describes itself rather than drawing itself, which is what puts
      its rows into Obsidian's settings search. There is no imperative
-     fallback: update() below is 1.13.0 API, so the manifest asks for 1.13.0
-     and every install that can run this plugin can render this. */
+     fallback: update() below uses the 1.13.0 API, and the manifest's desktop
+     baseline is 1.15.1, where both this page and remote ink were verified. */
   getSettingDefinitions(): SettingDefinitionItem[] {
     const t = this.plugin.t;
     return [

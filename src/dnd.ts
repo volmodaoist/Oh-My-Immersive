@@ -43,25 +43,25 @@ const CONTAINER = ".nav-files-container";
 /* On the container: the mode itself, and whether a drag is under way. The
    second is what lets the stylesheet tell "everything can move" from "only
    these can receive what you are holding". */
-export const MODE_CLASS = "immersive-folder-sorting";
-export const DRAGGING_MODE_CLASS = "immersive-folder-sorting-drag";
+export const MODE_CLASS = "oh-my-immersive-sorting";
+export const DRAGGING_MODE_CLASS = "oh-my-immersive-sorting-drag";
 /* On rows: the one being carried, and the ones that can take it. */
-export const DRAGGING_CLASS = "immersive-folder-dragging";
-export const TARGET_CLASS = "immersive-folder-drop-target";
+export const DRAGGING_CLASS = "oh-my-immersive-dragging";
+export const TARGET_CLASS = "oh-my-immersive-drop-target";
 /* On the grip: added to the folder's existing collapse arrow, or to an
    element created for it when it has none. */
-export const HANDLE_CLASS = "immersive-folder-handle";
-const INJECTED_ATTR = "data-immersive-folder-handle";
+export const HANDLE_CLASS = "oh-my-immersive-handle";
+const INJECTED_ATTR = "data-oh-my-immersive-handle";
 /* Above the tree: the way out. The attribute holds the text it was last
    built from, so a pass with nothing new to say leaves it alone. */
-export const EXIT_HINT_CLASS = "immersive-folder-sort-hint";
-const EXIT_HINT_TEXT_ATTR = "data-immersive-folder-text";
+export const EXIT_HINT_CLASS = "oh-my-immersive-sort-hint";
+const EXIT_HINT_TEXT_ATTR = "data-oh-my-immersive-text";
 const EXIT_KEY = "{key}";
-const DROP_ATTR = "data-immersive-folder-drop";
+const DROP_ATTR = "data-oh-my-immersive-drop";
 /* Rows carry no aria-label of their own, so setting one is safe and removing
    it on the way out leaves nothing behind. */
 const LABEL_ATTR = "aria-label";
-const LABELLED_ATTR = "data-immersive-folder-hint";
+const LABELLED_ATTR = "data-oh-my-immersive-hint";
 
 /* How far outside a row's band the pointer may sit and still count as
    pointing at it. Themes leave a margin between rows — measured at 2px

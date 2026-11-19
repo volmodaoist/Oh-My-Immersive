@@ -36,16 +36,16 @@ export class InkConnectionModal extends Modal {
   constructor(app: App, private readonly host: InkDialogHost, private readonly labels: InkDialogLabels) {
     super(app);
     this.setTitle(labels.inkConnect);
-    this.modalEl.addClass("immersive-folder-ink-modal");
+    this.modalEl.addClass("oh-my-immersive-ink-modal");
   }
 
   onOpen(): void {
     const t = this.labels;
     this.contentEl.createEl("p", { text: t.inkIntro });
-    this.contentEl.createDiv({ text: t.inkAddress, cls: "immersive-folder-ink-address-label" });
-    this.address = this.contentEl.createEl("code", { cls: "immersive-folder-ink-address" });
-    this.status = this.contentEl.createEl("p", { cls: "immersive-folder-ink-status", attr: { "aria-live": "polite", role: "status" } });
-    const actions = this.contentEl.createDiv({ cls: "immersive-folder-ink-actions" });
+    this.contentEl.createDiv({ text: t.inkAddress, cls: "oh-my-immersive-ink-address-label" });
+    this.address = this.contentEl.createEl("code", { cls: "oh-my-immersive-ink-address" });
+    this.status = this.contentEl.createEl("p", { cls: "oh-my-immersive-ink-status", attr: { "aria-live": "polite", role: "status" } });
+    const actions = this.contentEl.createDiv({ cls: "oh-my-immersive-ink-actions" });
     this.copyButton = new ButtonComponent(actions).setButtonText(t.inkCopy).setCta().onClick(async () => {
       const connection = this.host.connection();
       if (!connection || this.copying) return;

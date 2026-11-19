@@ -1,4 +1,6 @@
-# Immersive Folder
+# Oh-My-Immersive
+
+由 [volmodaoist](https://github.com/volmodaoist) 维护，基于 iBlinkQ 的 [Immersive Folder](https://github.com/iBlinkQ/immersive-folder) 0.6.0。保留原版权和 MIT 声明，本 fork 增加任意文件排序和浏览器临时书写。
 
 [English](README.md) · 简体中文 · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
 
@@ -22,7 +24,7 @@
 
 - **文件列表顶部的按钮**，点一下开关。遮挡开启时它会染上你的主题强调色，一眼
   就能看出当前状态。
-- **命令面板里的 `Immersive Folder: Toggle immersive folder`**，同样的作用，可以
+- **命令面板里的 `Oh-My-Immersive: Toggle immersive folder`**，同样的作用，可以
   绑快捷键 —— 如果你经常在录屏前后开关，值得绑一个。
 
 开关状态会在重启后保留。
@@ -119,20 +121,39 @@ Apple Pencil 使用压感，鼠标使用固定粗细；手指和手掌不会落�
 
 ## 安装
 
-在 Obsidian 里打开 设置 → 第三方插件 → 浏览，搜索 **Immersive Folder** 安装即可，
-也可以直接打开[社区插件页面](https://community.obsidian.md/plugins/immersive-folder)。
+当前可通过源码或 [GitHub Releases](https://github.com/volmodaoist/Oh-My-Immersive/releases) 手动安装。
+社区目录上架状态会在提交并通过审核后更新。
 
-需要 **Obsidian 1.13 或更高版本**。移动端各项功能同样正常，可以放心使用。
+需要 **桌面版 Obsidian 1.15.1 或更高版本**。iPad 和电脑浏览器可以连接远程书写；
+插件本身不在移动版 Obsidian 中安装。
 
-也可以手动安装：从[最新
-release](https://github.com/iBlinkQ/immersive-folder/releases/latest) 下载
-`main.js`、`manifest.json` 和 `styles.css`，放进
-`你的库/.obsidian/plugins/immersive-folder/`，然后在 设置 → 第三方插件 里启用。
-（`main.js` 是构建产物，不保存在仓库里 —— 它只存在于 release 中，或者你自己跑
-`npm run build` 之后。）
+### 从源码安装
 
-有问题或建议，欢迎提
-[Issue](https://github.com/iBlinkQ/immersive-folder/issues)。
+先安装 Node.js（建议 LTS 版本）、npm 和 GNU Make，并在 Obsidian 中打开过目标库，
+确保该目录已经有 `.obsidian`。然后执行：
+
+```bash
+git clone https://github.com/volmodaoist/Oh-My-Immersive.git
+cd Oh-My-Immersive
+make install vault="/你的 Obsidian 库路径"
+```
+
+路径包含空格时需加引号，中文路径也可使用。命令会安装缺少的开发依赖、构建插件，
+并将 `main.js`、`manifest.json`、`styles.css` 复制到
+`<vault>/.obsidian/plugins/oh-my-immersive/`。重复安装会保留已有 `data.json` 配置。
+目标库会在构建前校验，路径写错时不会创建一个空库。
+
+安装后，在 设置 → 第三方插件 中启用 **Oh-My-Immersive**；更新后重新加载插件或
+重启 Obsidian。若同一库已启用原插件 Immersive Folder，请先停用它，避免两份插件
+同时接管文件列表排序。
+
+### 从发行版手动安装
+
+下载同一个 Release 中的 `main.js`、`manifest.json`、`styles.css`，放入
+`你的库/.obsidian/plugins/oh-my-immersive/`，然后启用插件。
+`main.js` 是构建产物，在 Release 中提供，不保存在源码仓库里。
+
+问题和建议可提交到 [Issues](https://github.com/volmodaoist/Oh-My-Immersive/issues)。
 
 ## 开发
 
@@ -141,7 +162,7 @@ npm install
 npm run dev     # 监听构建
 npm run build   # 类型检查并构建 main.js
 npm run lint    # 社区插件审核所用的那套规则
-npm run sync    # 构建后复制进 sync.mjs 里列出的库
+make install vault="/path/to/vault"  # build and install into a vault
 ```
 
 `npm run lint` 必须在仓库根目录跑：规则会从工作目录读 `manifest.json`。

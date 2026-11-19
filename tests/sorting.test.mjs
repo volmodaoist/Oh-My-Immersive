@@ -61,7 +61,7 @@ class Row {
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const result = await build({
   stdin: {
-    contents: 'export { default as ImmersiveFolderPlugin } from "./src/main"; export * from "./src/order"; export { DragSort } from "./src/dnd";',
+    contents: 'export { default as OhMyImmersivePlugin } from "./src/main"; export * from "./src/order"; export { DragSort } from "./src/dnd";',
     resolveDir: fileURLToPath(new URL("..", import.meta.url)),
     sourcefile: "sorting-test-entry.ts",
     loader: "ts",
@@ -93,7 +93,7 @@ vm.runInNewContext(result.outputFiles[0].text, {
   HTMLElement: Row,
   document: { documentElement: { lang: "en" } },
 });
-const { ImmersiveFolderPlugin, OrderStore, DragSort, ORDER_VERSION } = module.exports;
+const { OhMyImmersivePlugin, OrderStore, DragSort, ORDER_VERSION } = module.exports;
 
 function fixture(data = null) {
   const root = new TFolder("/");
@@ -126,7 +126,7 @@ function fixture(data = null) {
       on: (name, callback) => { events.set(name, callback); },
     },
   };
-  const plugin = new ImmersiveFolderPlugin(app);
+  const plugin = new OhMyImmersivePlugin(app);
   // All native children are available even if the DOM only shows a few rows.
   plugin.sortPatch = {
     nativeItems: (parent) => parent.children.map((file) => ({ file })),
@@ -153,7 +153,7 @@ test("files of different types reorder independently of folders and survive relo
   assert.deepEqual(displayed(plugin, folder), expected);
   assert.deepEqual(displayed(plugin, folder, folder.children.slice().reverse()), expected);
   assert.equal(app.saves, 2);
-  const reloaded = new ImmersiveFolderPlugin(app);
+  const reloaded = new OhMyImmersivePlugin(app);
   await reloaded.loadSettings();
   assert.deepEqual(displayed(reloaded, folder), expected);
   assert.equal(app.saves, 2);
@@ -237,7 +237,7 @@ test("legacy folder orders are overwritten once while other settings survive", a
   assert.equal(app.data.orderVersion, ORDER_VERSION);
   assert.equal(app.data.language, "zh");
   assert.equal(app.data.keepActiveInView, false);
-  const reloaded = new ImmersiveFolderPlugin(app);
+  const reloaded = new OhMyImmersivePlugin(app);
   await reloaded.loadSettings();
   assert.equal(app.saves, 1);
 });
@@ -292,7 +292,7 @@ test("drag mode gives files handles and offers only same-group siblings", () => 
   const drag = new DragSort(host);
   drag.decorate();
   assert.ok(rows[0].handle);
-  assert.equal(rows[0].getAttribute("data-immersive-folder-hint"), "");
+  assert.equal(rows[0].getAttribute("data-oh-my-immersive-hint"), "");
   assert.deepEqual(plain(drag.findSiblings(a.path, rows[0]).map((row) => row.path)), [b.path]);
   assert.deepEqual(plain(drag.findSiblings(aFolder.path, rows[2]).map((row) => row.path)), [bFolder.path]);
   drag.removeHandle(rows[0].handle);

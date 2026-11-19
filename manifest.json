@@ -1,10 +1,10 @@
 {
-  "id": "immersive-folder",
-  "name": "Immersive Folder",
-  "version": "0.6.0",
-  "minAppVersion": "1.13.0",
-  "description": "While you're working in a folder, one click hides everything else and keeps just that folder's notes in view. Also lets you drag files and folders into your own order while keeping folders before files.",
-  "author": "iBlinkQ",
-  "authorUrl": "https://github.com/iBlinkQ",
-  "isDesktopOnly": false
+  "id": "oh-my-immersive",
+  "name": "Oh-My-Immersive",
+  "version": "1.0.0",
+  "minAppVersion": "1.15.1",
+  "description": "Hide unrelated folders while presenting, arrange files and folders by dragging, and annotate the current window from a browser on your local network.",
+  "author": "volmodaoist",
+  "authorUrl": "https://github.com/volmodaoist",
+  "isDesktopOnly": true
 }

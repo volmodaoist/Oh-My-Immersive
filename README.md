@@ -1,4 +1,6 @@
-# Immersive Folder
+# Oh-My-Immersive
+
+Maintained by [volmodaoist](https://github.com/volmodaoist). Based on [Immersive Folder](https://github.com/iBlinkQ/immersive-folder) 0.6.0 by iBlinkQ. The upstream copyright and MIT license are retained. This fork adds file ordering and browser-based temporary ink.
 
 English · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
 
@@ -28,7 +30,7 @@ nothing to select.
 
 - **The button** at the top of the file explorer toggles it. It takes on your
   accent colour while the cover is up, so the state is readable at a glance.
-- **`Immersive Folder: Toggle immersive folder`** does the same from the
+- **`Oh-My-Immersive: Toggle immersive folder`** does the same from the
   command palette, so you can bind a hotkey. Worth doing if you switch it on
   and off around recordings.
 
@@ -155,22 +157,41 @@ deep the tree goes.
 
 ## Installing
 
-In Obsidian, open Settings → Community plugins → Browse and search for
-**Immersive Folder**. You can also go straight to the [plugin
-page](https://community.obsidian.md/plugins/immersive-folder).
+Oh-My-Immersive currently supports source installation and manual installation
+from [GitHub Releases](https://github.com/volmodaoist/Oh-My-Immersive/releases). Community directory availability will
+be announced here after submission and review.
 
-Requires **Obsidian 1.13 or later**. Everything works on mobile as well.
+The host requires **desktop Obsidian 1.15.1 or later**. iPad and desktop browsers
+can connect to remote ink; the plugin itself is not installed in mobile Obsidian.
 
-To install it by hand instead: download `main.js`, `manifest.json` and
-`styles.css` from the [latest
-release](https://github.com/iBlinkQ/immersive-folder/releases/latest), put them
-in `YourVault/.obsidian/plugins/immersive-folder/`, and enable the plugin under
-Settings → Community plugins. (`main.js` is a build artefact and is not kept in
-the repository; it exists only in the releases, or after you run
-`npm run build` yourself.)
+### Install from source
 
-Questions and suggestions are welcome in
-[Issues](https://github.com/iBlinkQ/immersive-folder/issues).
+Install Node.js (an LTS version is recommended), npm and GNU Make. Open the
+vault in Obsidian once so its `.obsidian` directory exists, then run:
+
+```bash
+git clone https://github.com/volmodaoist/Oh-My-Immersive.git
+cd Oh-My-Immersive
+make install vault="/path/to/your Obsidian vault"
+```
+
+Quote paths containing spaces. The command installs missing development
+dependencies, builds the plugin and copies `main.js`, `manifest.json` and
+`styles.css` into `<vault>/.obsidian/plugins/oh-my-immersive/`. Existing
+`data.json` settings are preserved. It validates the vault before building and
+does not create a new vault for a mistyped path.
+
+Enable **Oh-My-Immersive** under Settings → Community plugins. After updating,
+reload the plugin or restart Obsidian. If Immersive Folder is enabled in the
+same vault, disable it first so both plugins do not control explorer sorting.
+
+### Install a release manually
+
+Download `main.js`, `manifest.json` and `styles.css` from a matching release,
+place them in `YourVault/.obsidian/plugins/oh-my-immersive/`, and enable the plugin.
+`main.js` is a build artifact, distributed with Releases rather than committed.
+
+Questions and suggestions are welcome in [Issues](https://github.com/volmodaoist/Oh-My-Immersive/issues).
 
 ## Development
 
@@ -179,7 +200,7 @@ npm install
 npm run dev     # watch build
 npm run build   # type-check and build main.js
 npm run lint    # the rules the community-plugin review runs
-npm run sync    # build, then copy into the vaults listed in sync.mjs
+make install vault="/path/to/vault"  # build and install into a vault
 ```
 
 `npm run lint` has to be run from the repository root: the rules read

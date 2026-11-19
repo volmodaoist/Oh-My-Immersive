@@ -6,9 +6,9 @@ export function flashInkButton(button: HTMLElement): void {
   if (!win) return;
   const previous = timers.get(button);
   if (previous) previous.win.clearTimeout(previous.timer);
-  button.classList.add("immersive-folder-ink-clicked");
+  button.classList.add("oh-my-immersive-ink-clicked");
   const timer = win.setTimeout(() => {
-    button.classList.remove("immersive-folder-ink-clicked");
+    button.classList.remove("oh-my-immersive-ink-clicked");
     timers.delete(button);
   }, 220);
   timers.set(button, { win, timer });

@@ -1,7 +1,7 @@
 /* Everything the plugin paints lives here rather than in a stylesheet built
    at runtime. The rules cannot know which folder is focused, so they do not
    try: they cover every row, and JavaScript marks the rows that should stay
-   readable with .immersive-folder-reveal. Each reveal rule below carries one
+   readable with .oh-my-immersive-reveal. Each reveal rule below carries one
    class more than the cover rule it answers, so it wins on specificity and
    not on source order. */
 
@@ -12,34 +12,34 @@ body {
      0 — a bar that disappears takes the shape of the list with it, and the
      list is how you find your way back out. Set it to 1 to switch the fade
      off and have every bar drawn alike, the way this cover used to look. */
-  --immersive-folder-bar: var(--background-modifier-border);
-  --immersive-folder-bar-opacity: 1;
-  --immersive-folder-bar-opacity-far: 0.2;
+  --oh-my-immersive-bar: var(--background-modifier-border);
+  --oh-my-immersive-bar-opacity: 1;
+  --oh-my-immersive-bar-opacity-far: 0.2;
 
   /* The sweep, played as immersive mode is switched on or off: a light runs
      along each bar from left to right, laying it down on the way in and
-     lifting it on the way out. One bar takes --immersive-folder-sweep to
+     lifting it on the way out. One bar takes --oh-my-immersive-sweep to
      cross; the bars further out start later, the farthest by
-     --immersive-folder-sweep-spread, so the cover spreads out from the folder
+     --oh-my-immersive-sweep-spread, so the cover spreads out from the folder
      you are in rather than landing everywhere at once. Set both to 0s to
      switch it off. */
-  --immersive-folder-sweep: 560ms;
-  --immersive-folder-sweep-spread: 420ms;
-  --immersive-folder-shimmer: var(--color-accent);
+  --oh-my-immersive-sweep: 560ms;
+  --oh-my-immersive-sweep-spread: 420ms;
+  --oh-my-immersive-shimmer: var(--color-accent);
 }
 
-.modal.immersive-folder-ink-modal { --modal-radius: var(--radius-m); border-radius: var(--modal-radius); }
-.immersive-folder-ink-address-label { color: var(--text-muted); font-size: var(--font-ui-small); margin-bottom: var(--size-4-2); }
-.immersive-folder-ink-address { display: block; padding: var(--size-4-3); border: var(--border-width) solid var(--background-modifier-border); border-radius: var(--radius-s); background: var(--background-secondary); font-size: var(--font-ui-small); white-space: nowrap; overflow-x: auto; user-select: all; }
-.immersive-folder-ink-status { min-height: 1.5em; color: var(--text-muted); }
-.immersive-folder-ink-status[data-state="error"] { color: var(--text-error); }
-.immersive-folder-ink-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--size-4-2); margin-top: var(--size-4-4); }
-.immersive-folder-ink-actions button { border-radius: var(--radius-s); }
-.view-header .view-action.immersive-folder-ink-button.immersive-folder-blocked { opacity: 0.5; pointer-events: none; }
-.immersive-folder-ink-actions button, .view-header .immersive-folder-ink-button, .view-header .immersive-folder-ink-clear-button { transition: filter 100ms ease, box-shadow 100ms ease; }
-.immersive-folder-ink-actions button.immersive-folder-ink-clicked, .view-header .view-action.immersive-folder-ink-clicked { filter: brightness(1.15); box-shadow: inset 0 0 0 1px var(--interactive-accent); }
-@media (prefers-reduced-motion: reduce) { .immersive-folder-ink-actions button, .view-header .immersive-folder-ink-button, .view-header .immersive-folder-ink-clear-button { transition: none; } }
-.view-header .view-action.immersive-folder-ink-button.is-active {
+.modal.oh-my-immersive-ink-modal { --modal-radius: var(--radius-m); border-radius: var(--modal-radius); }
+.oh-my-immersive-ink-address-label { color: var(--text-muted); font-size: var(--font-ui-small); margin-bottom: var(--size-4-2); }
+.oh-my-immersive-ink-address { display: block; padding: var(--size-4-3); border: var(--border-width) solid var(--background-modifier-border); border-radius: var(--radius-s); background: var(--background-secondary); font-size: var(--font-ui-small); white-space: nowrap; overflow-x: auto; user-select: all; }
+.oh-my-immersive-ink-status { min-height: 1.5em; color: var(--text-muted); }
+.oh-my-immersive-ink-status[data-state="error"] { color: var(--text-error); }
+.oh-my-immersive-ink-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--size-4-2); margin-top: var(--size-4-4); }
+.oh-my-immersive-ink-actions button { border-radius: var(--radius-s); }
+.view-header .view-action.oh-my-immersive-ink-button.oh-my-immersive-blocked { opacity: 0.5; pointer-events: none; }
+.oh-my-immersive-ink-actions button, .view-header .oh-my-immersive-ink-button, .view-header .oh-my-immersive-ink-clear-button { transition: filter 100ms ease, box-shadow 100ms ease; }
+.oh-my-immersive-ink-actions button.oh-my-immersive-ink-clicked, .view-header .view-action.oh-my-immersive-ink-clicked { filter: brightness(1.15); box-shadow: inset 0 0 0 1px var(--interactive-accent); }
+@media (prefers-reduced-motion: reduce) { .oh-my-immersive-ink-actions button, .view-header .oh-my-immersive-ink-button, .view-header .oh-my-immersive-ink-clear-button { transition: none; } }
+.view-header .view-action.oh-my-immersive-ink-button.is-active {
   color: var(--color-accent);
   background-color: var(--background-modifier-hover);
 }
@@ -62,9 +62,9 @@ body {
    The selector is this long on purpose: Obsidian styles the same state with
    .nav-buttons-container .nav-action-button.is-active, which outweighs a
    two-class rule and would win. */
-.nav-buttons-container .nav-action-button.immersive-folder-button.is-active,
+.nav-buttons-container .nav-action-button.oh-my-immersive-button.is-active,
 .nav-buttons-container
-  .nav-action-button.immersive-folder-sort-button.is-active {
+  .nav-action-button.oh-my-immersive-sort-button.is-active {
   background-color: hsla(var(--color-accent-hsl), 0.18);
   color: var(--color-accent);
 }
@@ -73,7 +73,7 @@ body {
    the other is on. Still clickable on purpose: clicking it says which mode is
    in the way, and a control that dims *and* goes dead reads as broken rather
    than as waiting its turn. */
-.nav-buttons-container .nav-action-button.immersive-folder-blocked {
+.nav-buttons-container .nav-action-button.oh-my-immersive-blocked {
   opacity: 0.4;
 }
 
@@ -88,87 +88,87 @@ body {
 
    Both marks on a row read the same figure, so a folder's icon placeholder
    recedes in step with its bar instead of staying put while the bar leaves. */
-.immersive-folder-on .nav-files-container .tree-item-self {
-  --immersive-folder-bar-alpha: calc(
-    var(--immersive-folder-bar-opacity) +
+.oh-my-immersive-on .nav-files-container .tree-item-self {
+  --oh-my-immersive-bar-alpha: calc(
+    var(--oh-my-immersive-bar-opacity) +
       (
-        var(--immersive-folder-bar-opacity-far) -
-          var(--immersive-folder-bar-opacity)
-      ) * var(--immersive-folder-fade, 0)
+        var(--oh-my-immersive-bar-opacity-far) -
+          var(--oh-my-immersive-bar-opacity)
+      ) * var(--oh-my-immersive-fade, 0)
   );
   /* The same figure says when a row's sweep starts, which is what makes it
      travel outwards from the readable block: nearest bars first. */
-  --immersive-folder-sweep-delay: calc(
-    var(--immersive-folder-fade, 0) * var(--immersive-folder-sweep-spread)
+  --oh-my-immersive-sweep-delay: calc(
+    var(--oh-my-immersive-fade, 0) * var(--oh-my-immersive-sweep-spread)
   );
 }
 
-.immersive-folder-on
+.oh-my-immersive-on
   .nav-files-container
-  .tree-item-self.immersive-folder-fade-1 {
-  --immersive-folder-fade: 0.1;
+  .tree-item-self.oh-my-immersive-fade-1 {
+  --oh-my-immersive-fade: 0.1;
 }
 
-.immersive-folder-on
+.oh-my-immersive-on
   .nav-files-container
-  .tree-item-self.immersive-folder-fade-2 {
-  --immersive-folder-fade: 0.2;
+  .tree-item-self.oh-my-immersive-fade-2 {
+  --oh-my-immersive-fade: 0.2;
 }
 
-.immersive-folder-on
+.oh-my-immersive-on
   .nav-files-container
-  .tree-item-self.immersive-folder-fade-3 {
-  --immersive-folder-fade: 0.3;
+  .tree-item-self.oh-my-immersive-fade-3 {
+  --oh-my-immersive-fade: 0.3;
 }
 
-.immersive-folder-on
+.oh-my-immersive-on
   .nav-files-container
-  .tree-item-self.immersive-folder-fade-4 {
-  --immersive-folder-fade: 0.4;
+  .tree-item-self.oh-my-immersive-fade-4 {
+  --oh-my-immersive-fade: 0.4;
 }
 
-.immersive-folder-on
+.oh-my-immersive-on
   .nav-files-container
-  .tree-item-self.immersive-folder-fade-5 {
-  --immersive-folder-fade: 0.5;
+  .tree-item-self.oh-my-immersive-fade-5 {
+  --oh-my-immersive-fade: 0.5;
 }
 
-.immersive-folder-on
+.oh-my-immersive-on
   .nav-files-container
-  .tree-item-self.immersive-folder-fade-6 {
-  --immersive-folder-fade: 0.6;
+  .tree-item-self.oh-my-immersive-fade-6 {
+  --oh-my-immersive-fade: 0.6;
 }
 
-.immersive-folder-on
+.oh-my-immersive-on
   .nav-files-container
-  .tree-item-self.immersive-folder-fade-7 {
-  --immersive-folder-fade: 0.7;
+  .tree-item-self.oh-my-immersive-fade-7 {
+  --oh-my-immersive-fade: 0.7;
 }
 
-.immersive-folder-on
+.oh-my-immersive-on
   .nav-files-container
-  .tree-item-self.immersive-folder-fade-8 {
-  --immersive-folder-fade: 0.8;
+  .tree-item-self.oh-my-immersive-fade-8 {
+  --oh-my-immersive-fade: 0.8;
 }
 
-.immersive-folder-on
+.oh-my-immersive-on
   .nav-files-container
-  .tree-item-self.immersive-folder-fade-9 {
-  --immersive-folder-fade: 0.9;
+  .tree-item-self.oh-my-immersive-fade-9 {
+  --oh-my-immersive-fade: 0.9;
 }
 
-.immersive-folder-on
+.oh-my-immersive-on
   .nav-files-container
-  .tree-item-self.immersive-folder-fade-10 {
-  --immersive-folder-fade: 1.0;
+  .tree-item-self.oh-my-immersive-fade-10 {
+  --oh-my-immersive-fade: 1.0;
 }
 
-.immersive-folder-on .nav-files-container .tree-item-self .tree-item-inner {
+.oh-my-immersive-on .nav-files-container .tree-item-self .tree-item-inner {
   position: relative;
   color: transparent;
 }
 
-.immersive-folder-on .nav-files-container .tree-item-self .tree-item-inner::after {
+.oh-my-immersive-on .nav-files-container .tree-item-self .tree-item-inner::after {
   content: "";
   position: absolute;
   left: 0;
@@ -178,18 +178,18 @@ body {
   width: 68%;
   max-width: 9em;
   border-radius: 2px;
-  background-color: var(--immersive-folder-bar);
-  opacity: var(--immersive-folder-bar-alpha);
+  background-color: var(--oh-my-immersive-bar);
+  opacity: var(--oh-my-immersive-bar-alpha);
 }
 
 /* Three widths, so a column of bars reads as a list rather than a barcode.
    The name still sets the row's width, but it is transparent by then, so its
    length is not on show. */
-.immersive-folder-on .nav-files-container .tree-item:nth-child(3n + 1) .tree-item-inner::after {
+.oh-my-immersive-on .nav-files-container .tree-item:nth-child(3n + 1) .tree-item-inner::after {
   width: 54%;
 }
 
-.immersive-folder-on .nav-files-container .tree-item:nth-child(3n + 2) .tree-item-inner::after {
+.oh-my-immersive-on .nav-files-container .tree-item:nth-child(3n + 2) .tree-item-inner::after {
   width: 81%;
 }
 
@@ -202,60 +202,60 @@ body {
    nodes down with it (Iconize renders emoji icons as bare text, which no
    child selector can reach), it leaves the box occupying its space, and a
    pseudo-element can still opt back into being visible. */
-.immersive-folder-on .nav-files-container .tree-item-self .iconize-icon {
+.oh-my-immersive-on .nav-files-container .tree-item-self .iconize-icon {
   position: relative;
   visibility: hidden;
 }
 
-.immersive-folder-on .nav-files-container .tree-item-self .iconize-icon::after {
+.oh-my-immersive-on .nav-files-container .tree-item-self .iconize-icon::after {
   content: "";
   visibility: visible;
   position: absolute;
   inset: 1px;
   border-radius: 3px;
-  background-color: var(--immersive-folder-bar);
-  opacity: var(--immersive-folder-bar-alpha);
+  background-color: var(--oh-my-immersive-bar);
+  opacity: var(--oh-my-immersive-bar-alpha);
 }
 
 /* The file-type tag is a word, so it goes the way the labels do. The collapse
    arrow stays — it carries no content, and the tree is unusable without it. */
-.immersive-folder-on .nav-files-container .tree-item-self .nav-file-tag {
+.oh-my-immersive-on .nav-files-container .tree-item-self .nav-file-tag {
   opacity: 0;
 }
 
 /* ── The rows it spares ────────────────────────────────────────────────── */
 
-.immersive-folder-on
+.oh-my-immersive-on
   .nav-files-container
-  .tree-item-self.immersive-folder-reveal
+  .tree-item-self.oh-my-immersive-reveal
   .tree-item-inner {
   color: inherit;
 }
 
-.immersive-folder-on
+.oh-my-immersive-on
   .nav-files-container
-  .tree-item-self.immersive-folder-reveal
+  .tree-item-self.oh-my-immersive-reveal
   .tree-item-inner::after {
   content: none;
 }
 
-.immersive-folder-on
+.oh-my-immersive-on
   .nav-files-container
-  .tree-item-self.immersive-folder-reveal
+  .tree-item-self.oh-my-immersive-reveal
   .iconize-icon {
   visibility: visible;
 }
 
-.immersive-folder-on
+.oh-my-immersive-on
   .nav-files-container
-  .tree-item-self.immersive-folder-reveal
+  .tree-item-self.oh-my-immersive-reveal
   .iconize-icon::after {
   content: none;
 }
 
-.immersive-folder-on
+.oh-my-immersive-on
   .nav-files-container
-  .tree-item-self.immersive-folder-reveal
+  .tree-item-self.oh-my-immersive-reveal
   .nav-file-tag {
   opacity: 1;
 }
@@ -278,23 +278,23 @@ body {
    to dissolve over half a second is half a second of names in a recording.
    The class that carries this rule is only up for the length of the sweep,
    so a row scrolled into view later arrives covered, as it always did. */
-.immersive-folder-on.immersive-folder-entering
+.oh-my-immersive-on.oh-my-immersive-entering
   .nav-files-container
   .tree-item-self
   :is(.tree-item-inner, .iconize-icon)::after {
   background-image: linear-gradient(
     90deg,
     transparent 38%,
-    var(--immersive-folder-shimmer) 50%,
+    var(--oh-my-immersive-shimmer) 50%,
     transparent 50%
   );
   background-size: 200% 100%;
   background-repeat: no-repeat;
-  animation: immersive-folder-sweep-in var(--immersive-folder-sweep)
-    cubic-bezier(0.3, 0, 0.2, 1) var(--immersive-folder-sweep-delay) both;
+  animation: oh-my-immersive-sweep-in var(--oh-my-immersive-sweep)
+    cubic-bezier(0.3, 0, 0.2, 1) var(--oh-my-immersive-sweep-delay) both;
 }
 
-@keyframes immersive-folder-sweep-in {
+@keyframes oh-my-immersive-sweep-in {
   from {
     clip-path: inset(0 100% 0 0);
     background-position: 100% 0;
@@ -308,23 +308,23 @@ body {
 /* The way out runs the same direction: the light goes in front, the bar is
    lifted behind it, and the name comes back up through the gap. The tail of
    the light now trails ahead of the edge, over what is still covered. */
-.immersive-folder-on.immersive-folder-leaving
+.oh-my-immersive-on.oh-my-immersive-leaving
   .nav-files-container
   .tree-item-self
   :is(.tree-item-inner, .iconize-icon)::after {
   background-image: linear-gradient(
     90deg,
     transparent 50%,
-    var(--immersive-folder-shimmer) 50%,
+    var(--oh-my-immersive-shimmer) 50%,
     transparent 62%
   );
   background-size: 200% 100%;
   background-repeat: no-repeat;
-  animation: immersive-folder-sweep-out var(--immersive-folder-sweep)
-    cubic-bezier(0.3, 0, 0.2, 1) var(--immersive-folder-sweep-delay) both;
+  animation: oh-my-immersive-sweep-out var(--oh-my-immersive-sweep)
+    cubic-bezier(0.3, 0, 0.2, 1) var(--oh-my-immersive-sweep-delay) both;
 }
 
-@keyframes immersive-folder-sweep-out {
+@keyframes oh-my-immersive-sweep-out {
   from {
     clip-path: inset(0 0 0 -24%);
     background-position: 124% 0;
@@ -351,53 +351,53 @@ body {
    without the :not() they were taken back to transparent along with
    everything else and faded in again — the one block meant to stay put,
    blinking out as the cover lifted. */
-.immersive-folder-on.immersive-folder-leaving
+.oh-my-immersive-on.oh-my-immersive-leaving
   .nav-files-container
-  .tree-item-self:not(.immersive-folder-reveal)
+  .tree-item-self:not(.oh-my-immersive-reveal)
   .tree-item-inner {
   color: inherit;
-  animation: immersive-folder-sweep-name var(--immersive-folder-sweep)
-    ease-in-out var(--immersive-folder-sweep-delay) both;
+  animation: oh-my-immersive-sweep-name var(--oh-my-immersive-sweep)
+    ease-in-out var(--oh-my-immersive-sweep-delay) both;
 }
 
-.immersive-folder-on.immersive-folder-leaving
+.oh-my-immersive-on.oh-my-immersive-leaving
   .nav-files-container
-  .tree-item-self:not(.immersive-folder-reveal)
+  .tree-item-self:not(.oh-my-immersive-reveal)
   .nav-file-tag {
   opacity: 1;
-  animation: immersive-folder-sweep-tag var(--immersive-folder-sweep)
-    ease-in-out var(--immersive-folder-sweep-delay) both;
+  animation: oh-my-immersive-sweep-tag var(--oh-my-immersive-sweep)
+    ease-in-out var(--oh-my-immersive-sweep-delay) both;
 }
 
 /* Visibility cannot fade; it turns on the moment its sweep starts. */
-.immersive-folder-on.immersive-folder-leaving
+.oh-my-immersive-on.oh-my-immersive-leaving
   .nav-files-container
-  .tree-item-self:not(.immersive-folder-reveal)
+  .tree-item-self:not(.oh-my-immersive-reveal)
   .iconize-icon {
   visibility: visible;
-  animation: immersive-folder-sweep-icon var(--immersive-folder-sweep) linear
-    var(--immersive-folder-sweep-delay) both;
+  animation: oh-my-immersive-sweep-icon var(--oh-my-immersive-sweep) linear
+    var(--oh-my-immersive-sweep-delay) both;
 }
 
 /* The name waits until the light is most of the way across before it comes
    up. Fading from the first moment, it showed through the part of the bar
    not yet lifted and read as struck through, with the light smudged over
    it. */
-@keyframes immersive-folder-sweep-name {
+@keyframes oh-my-immersive-sweep-name {
   from,
   45% {
     color: transparent;
   }
 }
 
-@keyframes immersive-folder-sweep-tag {
+@keyframes oh-my-immersive-sweep-tag {
   from,
   45% {
     opacity: 0;
   }
 }
 
-@keyframes immersive-folder-sweep-icon {
+@keyframes oh-my-immersive-sweep-icon {
   from {
     visibility: hidden;
   }
@@ -410,15 +410,15 @@ body {
      the bars above can. The drop line takes the accent picked in Appearance
      rather than --interactive-accent, which some themes retune as a button
      fill: this is an indicator line, not a control surface. */
-  --immersive-folder-drop-line: var(--color-accent);
-  --immersive-folder-drag-bg: var(--background-modifier-active-hover);
-  --immersive-folder-handle: var(--text-muted);
-  --immersive-folder-dim: 0.32;
+  --oh-my-immersive-drop-line: var(--color-accent);
+  --oh-my-immersive-drag-bg: var(--background-modifier-active-hover);
+  --oh-my-immersive-handle: var(--text-muted);
+  --oh-my-immersive-dim: 0.32;
 
   /* Six dots — the "grab here" symbol. It can afford to be literal now: in
      arrange mode the handle is always on screen, so it answers "can this be
      picked up" before you try, which is exactly what the shape means. */
-  --immersive-folder-grip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23000'%3E%3Ccircle cx='9' cy='5' r='1.7'/%3E%3Ccircle cx='9' cy='12' r='1.7'/%3E%3Ccircle cx='9' cy='19' r='1.7'/%3E%3Ccircle cx='15' cy='5' r='1.7'/%3E%3Ccircle cx='15' cy='12' r='1.7'/%3E%3Ccircle cx='15' cy='19' r='1.7'/%3E%3C/svg%3E");
+  --oh-my-immersive-grip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23000'%3E%3Ccircle cx='9' cy='5' r='1.7'/%3E%3Ccircle cx='9' cy='12' r='1.7'/%3E%3Ccircle cx='9' cy='19' r='1.7'/%3E%3Ccircle cx='15' cy='5' r='1.7'/%3E%3Ccircle cx='15' cy='12' r='1.7'/%3E%3Ccircle cx='15' cy='19' r='1.7'/%3E%3C/svg%3E");
 }
 
 /* ── The handle ────────────────────────────────────────────────────────── */
@@ -427,18 +427,18 @@ body {
    duration; on a file row it is one created to match. Either way the arrow's
    glyph is hidden and the dots are drawn in its place, which is why the two
    line up in the same column at any indentation. */
-.immersive-folder-handle > svg {
+.oh-my-immersive-handle > svg {
   display: none;
 }
 
-.immersive-folder-handle::after {
+.oh-my-immersive-handle::after {
   content: "";
   display: block;
   width: 16px;
   height: 16px;
   background-color: currentColor;
-  -webkit-mask-image: var(--immersive-folder-grip);
-  mask-image: var(--immersive-folder-grip);
+  -webkit-mask-image: var(--oh-my-immersive-grip);
+  mask-image: var(--oh-my-immersive-grip);
   -webkit-mask-size: 15px;
   mask-size: 15px;
   -webkit-mask-repeat: no-repeat;
@@ -450,10 +450,10 @@ body {
 /* The selector is this long deliberately: themes dim the collapse arrow
    through rules like .nav-files-container .tree-item-self .collapse-icon, and
    a bare class loses to them on specificity. */
-.nav-files-container .tree-item-self .immersive-folder-handle,
-.nav-files-container .tree-item-self .collapse-icon.immersive-folder-handle {
+.nav-files-container .tree-item-self .oh-my-immersive-handle,
+.nav-files-container .tree-item-self .collapse-icon.oh-my-immersive-handle {
   opacity: 1;
-  color: var(--immersive-folder-handle);
+  color: var(--oh-my-immersive-handle);
 }
 
 /* ── The mode ──────────────────────────────────────────────────────────── */
@@ -465,7 +465,7 @@ body {
    after a drop uses `transform`, and keeping them on separate properties lets
    the two compose instead of overwriting each other — so a row can slide to
    its new place without the idle drift having to stop. */
-@keyframes immersive-folder-drift {
+@keyframes oh-my-immersive-drift {
   0%,
   100% {
     translate: 0 -1px;
@@ -476,29 +476,29 @@ body {
 }
 
 /* Every accepted file or folder row carries the attribute set by DragSort. */
-.immersive-folder-sorting .tree-item-self[data-immersive-folder-hint] {
-  animation: immersive-folder-drift 1.2s ease-in-out infinite;
+.oh-my-immersive-sorting .tree-item-self[data-oh-my-immersive-hint] {
+  animation: oh-my-immersive-drift 1.2s ease-in-out infinite;
   cursor: grab;
 }
 
 /* Neighbours drift out of step. In lockstep the whole column looks like it is
    glitching rather than floating. */
-.immersive-folder-sorting
+.oh-my-immersive-sorting
   .tree-item:nth-child(3n + 2)
-  > .tree-item-self[data-immersive-folder-hint] {
+  > .tree-item-self[data-oh-my-immersive-hint] {
   animation-delay: -0.4s;
 }
 
-.immersive-folder-sorting
+.oh-my-immersive-sorting
   .tree-item:nth-child(3n)
-  > .tree-item-self[data-immersive-folder-hint] {
+  > .tree-item-self[data-oh-my-immersive-hint] {
   animation-delay: -0.8s;
 }
 
 /* Rows that do not represent an arrangeable vault item stay inert. */
-.immersive-folder-sorting
-  .tree-item-self:not([data-immersive-folder-hint]) {
-  opacity: var(--immersive-folder-dim);
+.oh-my-immersive-sorting
+  .tree-item-self:not([data-oh-my-immersive-hint]) {
+  opacity: var(--oh-my-immersive-dim);
   pointer-events: none;
   cursor: default;
 }
@@ -509,7 +509,7 @@ body {
    part of it — see signpost() in dnd.ts — so it is laid out as one more row
    of the explorer's column and never scrolls. Quiet on purpose: it is a
    reminder, read once, and should not pull the eye off the folders. */
-.immersive-folder-sort-hint {
+.oh-my-immersive-sort-hint {
   flex: 0 0 auto;
   padding: 0 var(--size-4-2) var(--size-4-2);
   text-align: center;
@@ -520,7 +520,7 @@ body {
 
 /* Sized to the line around it rather than to code: themes pitch kbd for
    prose, and a key chip taller than its sentence looks like a button. */
-.immersive-folder-sort-hint kbd {
+.oh-my-immersive-sort-hint kbd {
   font-size: inherit;
 }
 
@@ -538,12 +538,12 @@ body {
    out of phase by design, opened gaps of up to 3.2px between them where the
    pointer was over no row at all and the line blinked out entirely. */
 /* The selector carries the container class and the attribute on purpose. The
-   drift rule above is .immersive-folder-sorting .tree-item-self[hint] — three
+   drift rule above is .oh-my-immersive-sorting .tree-item-self[hint] — three
    selectors — and a two-selector rule loses to it however late it is written,
    which is exactly what happened: the rows went on drifting through every
    drag and the line went on flickering. */
-.nav-files-container.immersive-folder-sorting-drag
-  .tree-item-self[data-immersive-folder-hint] {
+.nav-files-container.oh-my-immersive-sorting-drag
+  .tree-item-self[data-oh-my-immersive-hint] {
   animation: none;
 }
 
@@ -551,16 +551,16 @@ body {
    something you see rather than something you find out by trying. Reordering
    is always among siblings, and after this there is no need to remember that
    — the screen says so. */
-.immersive-folder-sorting-drag
-  .tree-item-self:not(.immersive-folder-drop-target):not(
-    .immersive-folder-dragging
+.oh-my-immersive-sorting-drag
+  .tree-item-self:not(.oh-my-immersive-drop-target):not(
+    .oh-my-immersive-dragging
   ) {
-  opacity: var(--immersive-folder-dim);
+  opacity: var(--oh-my-immersive-dim);
   cursor: default;
 }
 
-.nav-files-container .tree-item-self.immersive-folder-dragging {
-  background-color: var(--immersive-folder-drag-bg);
+.nav-files-container .tree-item-self.oh-my-immersive-dragging {
+  background-color: var(--oh-my-immersive-drag-bg);
   cursor: grabbing;
 }
 
@@ -569,7 +569,7 @@ body {
    cancel each other out. Kept light — you still need to read what you are
    holding. The handle is deliberately absent from this list; it stays at full
    strength as the row fades. */
-.nav-files-container .tree-item-self.immersive-folder-dragging
+.nav-files-container .tree-item-self.oh-my-immersive-dragging
   :is(.tree-item-inner, .iconize-icon, .nav-file-tag) {
   opacity: 0.78;
 }
@@ -580,51 +580,51 @@ body {
    "after" draws below the whole subtree — at the place the row will actually
    end up. On the title row instead, the line would fall between a folder and
    its first child and read as "into this folder". */
-.nav-files-container .tree-item[data-immersive-folder-drop] {
+.nav-files-container .tree-item[data-oh-my-immersive-drop] {
   position: relative;
 }
 
-.nav-files-container .tree-item[data-immersive-folder-drop]::after {
+.nav-files-container .tree-item[data-oh-my-immersive-drop]::after {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
   height: 2px;
   border-radius: 1px;
-  background-color: var(--immersive-folder-drop-line);
+  background-color: var(--oh-my-immersive-drop-line);
   pointer-events: none;
 }
 
-.nav-files-container .tree-item[data-immersive-folder-drop="before"]::after {
+.nav-files-container .tree-item[data-oh-my-immersive-drop="before"]::after {
   top: -1px;
 }
 
-.nav-files-container .tree-item[data-immersive-folder-drop="after"]::after {
+.nav-files-container .tree-item[data-oh-my-immersive-drop="after"]::after {
   bottom: -1px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .immersive-folder-sorting .tree-item-self[data-immersive-folder-hint] {
+  .oh-my-immersive-sorting .tree-item-self[data-oh-my-immersive-hint] {
     animation: none;
   }
 
   /* The sweep's own selectors, repeated word for word: equal weight, and
      later in the file, so these win. With nothing running, the plugin finds
      no sweep to wait on and switches straight across. */
-  .immersive-folder-on.immersive-folder-entering
+  .oh-my-immersive-on.oh-my-immersive-entering
     .nav-files-container
     .tree-item-self
     :is(.tree-item-inner, .iconize-icon)::after,
-  .immersive-folder-on.immersive-folder-leaving
+  .oh-my-immersive-on.oh-my-immersive-leaving
     .nav-files-container
     .tree-item-self
     :is(.tree-item-inner, .iconize-icon)::after {
     animation: none;
   }
 
-  .immersive-folder-on.immersive-folder-leaving
+  .oh-my-immersive-on.oh-my-immersive-leaving
     .nav-files-container
-    .tree-item-self:not(.immersive-folder-reveal)
+    .tree-item-self:not(.oh-my-immersive-reveal)
     :is(.tree-item-inner, .nav-file-tag, .iconize-icon) {
     animation: none;
   }

@@ -1,4 +1,6 @@
-# Immersive Folder
+# Oh-My-Immersive
+
+[volmodaoist](https://github.com/volmodaoist) が保守しています。iBlinkQ の [Immersive Folder](https://github.com/iBlinkQ/immersive-folder) 0.6.0 を基にしており、元の著作権表示と MIT ライセンスを保持します。
 
 [English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · 日本語 · [한국어](README.ko.md)
 
@@ -27,7 +29,7 @@ Obsidian のプラグインです。あるフォルダーで作業している�
 
 - **ファイルエクスプローラー上部のボタン**で切り替えます。覆いが出ているあいだは
   アクセントカラーを帯びるので、状態がひと目で分かります。
-- コマンドパレットの **`Immersive Folder: Toggle immersive folder`** も同じ働きを
+- コマンドパレットの **`Oh-My-Immersive: Toggle immersive folder`** も同じ働きを
   します。ホットキーを割り当てられるので、録画のたびに切り替えるなら便利です。
 
 状態は再起動をまたいで保持されます。
@@ -124,22 +126,25 @@ Obsidian のプラグインです。あるフォルダーで作業している�
 
 ## インストール
 
-Obsidian で 設定 → コミュニティプラグイン → 閲覧 を開き、**Immersive Folder** を
-検索してインストールしてください。[プラグインページ](https://community.obsidian.md/plugins/immersive-folder)
-から直接開くこともできます。
+現在はソースから、または [GitHub Releases](https://github.com/volmodaoist/Oh-My-Immersive/releases) から手動で
+インストールできます。コミュニティ掲載状況は審査後に更新します。
+**デスクトップ版 Obsidian 1.15.1 以上**が必要です。iPad はブラウザーで接続できます。
 
-**Obsidian 1.13 以降**が必要です。モバイルでもすべての機能がそのまま使えます。
+Node.js（LTS 推奨）、npm、GNU Make を用意し、対象の保管庫を一度 Obsidian で開いてから実行します：
 
-手動で入れる場合は、[最新の
-release](https://github.com/iBlinkQ/immersive-folder/releases/latest) から
-`main.js`、`manifest.json`、`styles.css` をダウンロードし、
-`あなたの保管庫/.obsidian/plugins/immersive-folder/` に置いて、設定 →
-コミュニティプラグイン から有効にしてください。（`main.js` はビルド成果物で
-リポジトリには入っていません。リリースの中か、自分で `npm run build` を実行した
-あとにだけ存在します。）
+```bash
+git clone https://github.com/volmodaoist/Oh-My-Immersive.git
+cd Oh-My-Immersive
+make install vault="/path/to/your Obsidian vault"
+```
 
-質問や提案は [Issues](https://github.com/iBlinkQ/immersive-folder/issues) へ
-どうぞ。
+スペースを含むパスは引用符で囲んでください。依存関係を用意してビルドし、
+`<vault>/.obsidian/plugins/oh-my-immersive/` にファイルをコピーします。
+既存の `data.json` は保持します。設定で **Oh-My-Immersive** を有効にしてください。
+元の Immersive Folder は先に無効にし、更新時はプラグインを再読み込みします。
+
+同じ Release の `main.js`、`manifest.json`、`styles.css` を手動配置することもできます。
+質問は [Issues](https://github.com/volmodaoist/Oh-My-Immersive/issues) へお願いします。
 
 ## 開発
 
@@ -148,7 +153,7 @@ npm install
 npm run dev     # ウォッチビルド
 npm run build   # 型チェックして main.js をビルド
 npm run lint    # コミュニティプラグイン審査が走らせるルール
-npm run sync    # ビルドして sync.mjs に列挙した保管庫へコピー
+make install vault="/path/to/vault"  # build and install into a vault
 ```
 
 `npm run lint` はリポジトリのルートで実行する必要があります。ルールが作業ディレクトリ

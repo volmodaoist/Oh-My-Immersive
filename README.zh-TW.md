@@ -1,4 +1,6 @@
-# Immersive Folder
+# Oh-My-Immersive
+
+由 [volmodaoist](https://github.com/volmodaoist) 維護，基於 iBlinkQ 的 [Immersive Folder](https://github.com/iBlinkQ/immersive-folder) 0.6.0，保留原版權和 MIT 授權。
 
 [English](README.md) · [简体中文](README.zh-CN.md) · 繁體中文 · [日本語](README.ja.md) · [한국어](README.ko.md)
 
@@ -22,7 +24,7 @@
 
 - **檔案列表頂端的按鈕**，點一下開關。遮擋開啟時它會染上你的主題強調色，一眼
   就能看出目前狀態。
-- **命令面板裡的 `Immersive Folder: Toggle immersive folder`**，作用相同，可以
+- **命令面板裡的 `Oh-My-Immersive: Toggle immersive folder`**，作用相同，可以
   綁快速鍵 —— 如果你經常在錄影前後開關，值得綁一個。
 
 開關狀態會在重新啟動後保留。
@@ -102,20 +104,24 @@ Pencil 使用壓感，滑鼠使用固定粗細；手指與手掌不會落墨。�
 
 ## 安裝
 
-在 Obsidian 裡打開 設定 → 第三方外掛 → 瀏覽，搜尋 **Immersive Folder** 安裝即可，
-也可以直接打開[社群外掛頁面](https://community.obsidian.md/plugins/immersive-folder)。
+目前透過源码或 [GitHub Releases](https://github.com/volmodaoist/Oh-My-Immersive/releases) 手動安裝。
+社群目錄上架狀態會在審核完成後更新。需要 **桌面版 Obsidian 1.15.1 以上**；
+iPad 可透過瀏覽器連接手寫服務，外掛本身不在行動版 Obsidian 安裝。
 
-需要 **Obsidian 1.13 或更高版本**。行動裝置上各項功能同樣正常，可以放心使用。
+安裝 Node.js（建議 LTS）、npm 和 GNU Make，並先在 Obsidian 開啟過目標儲存庫：
 
-也可以手動安裝：從[最新
-release](https://github.com/iBlinkQ/immersive-folder/releases/latest) 下載
-`main.js`、`manifest.json` 和 `styles.css`，放進
-`你的儲存庫/.obsidian/plugins/immersive-folder/`，然後在 設定 → 第三方外掛 裡啟用。
-（`main.js` 是建置產物，不保存在儲存庫裡 —— 它只存在於 release 中，或者你自己跑
-`npm run build` 之後。）
+```bash
+git clone https://github.com/volmodaoist/Oh-My-Immersive.git
+cd Oh-My-Immersive
+make install vault="/你的 Obsidian 儲存庫路徑"
+```
 
-有問題或建議，歡迎提
-[Issue](https://github.com/iBlinkQ/immersive-folder/issues)。
+支援含空格和中文的路徑。命令會安裝缺少的依賴、建置並複製三個外掛檔案到
+`<vault>/.obsidian/plugins/oh-my-immersive/`，保留現有 `data.json`。
+在設定中啟用 **Oh-My-Immersive**，更新後重新載入。請先停用原 Immersive Folder。
+
+也可以從同一個 Release 下載 `main.js`、`manifest.json`、`styles.css` 手動放入該目錄。
+問題可提交到 [Issues](https://github.com/volmodaoist/Oh-My-Immersive/issues)。
 
 ## 開發
 
@@ -124,7 +130,7 @@ npm install
 npm run dev     # 監看建置
 npm run build   # 型別檢查並建置 main.js
 npm run lint    # 社群外掛審核所用的那套規則
-npm run sync    # 建置後複製進 sync.mjs 裡列出的儲存庫
+make install vault="/path/to/vault"  # build and install into a vault
 ```
 
 `npm run lint` 必須在儲存庫根目錄跑：規則會從工作目錄讀 `manifest.json`。
