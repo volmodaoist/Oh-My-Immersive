@@ -6,6 +6,7 @@ import {
   HttpMethod,
   InkRoute,
   parseDrawingTool,
+  ScrollResult,
 } from "./enums";
 import {
   acceptsPointer,
@@ -16,6 +17,7 @@ import {
 } from "./engine";
 import { protectDrawingSurface } from "./gestures";
 import { FramePainter } from "./frames";
+import { parseScrollRequest, wheelScrollAmount } from "./scroll";
 import {
   MAX_BATCH_POINTS,
   type InkEvent,
@@ -58,6 +60,8 @@ const strokeMap = new Map<string, Stroke>();
 const pair = element("pair");
 const pairError = element("pair-error");
 const toolbar = element("toolbar");
+const scrollUp = element<HTMLButtonElement>("scroll-up");
+const scrollDown = element<HTMLButtonElement>("scroll-down");
 let connected = false;
 let revision = -1;
 let frameWidth = 1280;
@@ -71,6 +75,10 @@ let flushTimer: number | null = null;
 let pendingEraseIds = new Set<string>();
 let sendQueue = Promise.resolve();
 let connectionGeneration = 0;
+let scrollPending = 0;
+let scrollTimer: number | null = null;
+let scrolling = false;
+let scrollAbort: AbortController | null = null;
 const endpoint = (path: string) =>
   `${path}${path.includes("?") ? "&" : "?"}code=${encodeURIComponent(token)}`;
 
@@ -114,6 +122,8 @@ function connect(): void {
   pair.hidden = true;
   eventStream?.close();
   connected = false;
+  cancelRemoteScroll();
+  updateScrollControls();
   status.textContent = "连接中…";
   eventStream = new EventSource(
     endpoint(`${InkRoute.Events}?client=${clientId}`),
@@ -123,6 +133,7 @@ function connect(): void {
   eventStream.addEventListener(InkStreamEvent.Dimensions, receiveDimensions);
   eventStream.onerror = () => {
     connected = false;
+    cancelRemoteScroll();
     status.textContent = "连接中断，正在重连…";
     // EventSource's automatic reconnect receives an authoritative snapshot.
     cancelLocal();
@@ -142,6 +153,7 @@ function receiveSnapshot(event: Event): void {
   frameWidth = data.width;
   frameHeight = data.height;
   connected = true;
+  updateScrollControls();
   status.textContent = "已连接 · 笔尖 / 鼠标 · 触摸不落墨";
   resize();
 }
@@ -192,6 +204,7 @@ function receiveOperation(event: Event): void {
     cancelLocal();
   }
   render();
+  updateScrollControls();
 }
 
 /** 窗口尺寸更新后，底图与笔迹共享新的舞台比例。 */
@@ -216,7 +229,139 @@ function cancelLocal(): void {
   }
   flushTimer = null;
   pendingEraseIds.clear();
+  updateScrollControls();
 }
+
+/** 只传垂直滚动，独立于笔迹队列；触摸仍由画布的防误触规则处理。 */
+function updateScrollControls(): void {
+  const drawing =
+    activePointerId !== null ||
+    [...strokeMap.values()].some((stroke) => !stroke.complete);
+  const disabled = overlay || !connected || drawing;
+  scrollUp.disabled = disabled;
+  scrollDown.disabled = disabled;
+}
+
+function cancelRemoteScroll(): void {
+  scrollPending = 0;
+  if (scrollTimer !== null) {
+    window.clearTimeout(scrollTimer);
+    scrollTimer = null;
+  }
+  scrollAbort?.abort();
+}
+
+function queueScroll(amount: number): void {
+  if (scrollUp.disabled || amount === 0) {
+    return;
+  }
+  scrollPending = Math.max(-1, Math.min(1, scrollPending + amount));
+  if (scrollTimer === null && !scrolling) {
+    scrollTimer = window.setTimeout(() => {
+      void flushScroll();
+    }, 50);
+  }
+}
+
+/** 每次发送前获取目标标识，再由宿主复核，避免迟到指令滚动另一篇笔记。 */
+async function flushScroll(): Promise<void> {
+  scrollTimer = null;
+  if (scrollUp.disabled || scrollPending === 0) {
+    scrollPending = 0;
+    return;
+  }
+  const amount = scrollPending;
+  scrollPending = 0;
+  scrolling = true;
+  const abort = new AbortController();
+  scrollAbort = abort;
+  let timedOut = false;
+  const timeout = window.setTimeout(() => {
+    timedOut = true;
+    abort.abort();
+  }, 3000);
+  const generation = connectionGeneration;
+  try {
+    const endpointURL = endpoint(InkRoute.Scroll);
+    const stateResponse = await fetch(endpointURL, { signal: abort.signal });
+    if (!stateResponse.ok) {
+      throw new Error("无法读取笔记滚动状态");
+    }
+    const state = (await stateResponse.json()) as { target?: unknown };
+    if (generation !== connectionGeneration || scrollUp.disabled) {
+      return;
+    }
+    if (state.target === null) {
+      status.textContent = "请在本机主窗口选中 Markdown 笔记后滚动";
+      return;
+    }
+    const request = parseScrollRequest({ target: state.target, amount });
+    const response = await fetch(endpointURL, {
+      method: HttpMethod.Post,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+      signal: abort.signal,
+    });
+    if (!response.ok) {
+      throw new Error("滚动回传失败");
+    }
+    const result = (await response.json()) as { result?: unknown };
+    if (generation !== connectionGeneration || abort.signal.aborted) {
+      return;
+    }
+    if (result.result === ScrollResult.Busy) {
+      status.textContent = "书写中，已暂停滚动";
+    } else if (result.result === ScrollResult.Stale) {
+      status.textContent = "笔记已切换，请重新滚动";
+      scrollPending = 0;
+    } else if (result.result === ScrollResult.Unavailable) {
+      status.textContent = "请在本机主窗口选中 Markdown 笔记后滚动";
+    } else if (result.result === ScrollResult.Applied) {
+      status.textContent = "已连接 · 上下滚动 · 触摸不落墨";
+    } else {
+      throw new Error("无效的滚动响应");
+    }
+  } catch {
+    if (
+      (!abort.signal.aborted || timedOut) &&
+      generation === connectionGeneration
+    ) {
+      status.textContent = timedOut
+        ? "滚动回传超时，请重试"
+        : "滚动回传失败，请重试";
+    }
+    scrollPending = 0;
+  } finally {
+    window.clearTimeout(timeout);
+    if (scrollAbort === abort) scrollAbort = null;
+    scrolling = false;
+    if (!scrollUp.disabled && scrollPending !== 0 && scrollTimer === null) {
+      scrollTimer = window.setTimeout(() => {
+        void flushScroll();
+      }, 50);
+    }
+  }
+}
+
+scrollUp.addEventListener("click", () => queueScroll(-0.5));
+scrollDown.addEventListener("click", () => queueScroll(0.5));
+area.addEventListener(
+  "wheel",
+  (event) => {
+    if (event.ctrlKey || event.deltaY === 0) {
+      return;
+    }
+    event.preventDefault();
+    queueScroll(
+      wheelScrollAmount(
+        event.deltaY,
+        event.deltaMode,
+        stage.getBoundingClientRect().height,
+      ),
+    );
+  },
+  { passive: false },
+);
 
 /** 固定操作内容后串行发送，保证 Begin、Append、End 不会网络乱序。 */
 function enqueue(op: InkOp): void {
@@ -309,7 +454,9 @@ canvas.addEventListener("pointerdown", (event) => {
     return;
   }
   event.preventDefault();
+  cancelRemoteScroll();
   activePointerId = event.pointerId;
+  updateScrollControls();
   canvas.setPointerCapture(activePointerId);
   if (tool === DrawingTool.Eraser) {
     erase(event);
@@ -375,6 +522,7 @@ canvas.addEventListener("pointerup", (event) => {
   }
   activeStroke = null;
   activePointerId = null;
+  updateScrollControls();
   render();
 });
 
@@ -483,6 +631,7 @@ resize();
 void nextFrame();
 window.addEventListener("pagehide", (event) => {
   if (!event.persisted) {
+    cancelRemoteScroll();
     framePainter.destroy();
   }
 });

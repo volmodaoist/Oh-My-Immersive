@@ -214,6 +214,8 @@ export const INK_PAGE = /* html */ `<!doctype html>
           step=".5"
           value="3" /></label
       ><button id="undo">撤销</button><button id="clear">清屏</button
+      ><button id="scroll-up" title="向上滚动半屏" aria-label="向上滚动半屏" disabled>↑ 上移</button
+      ><button id="scroll-down" title="向下滚动半屏" aria-label="向下滚动半屏" disabled>↓ 下移</button
       ><span id="status">连接中…</span>
     </div>
     <div id="area">

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add browser Up/Down controls and vertical mouse-wheel forwarding for the main window's selected Markdown note, with bounded requests, target validation and drawing exclusion.
 - Close active HTTP connections when stopping remote ink so unfinished frame requests and uploads cannot keep the service stuck in Stopping.
 - Replace the remote ink modal with a hover and click popover, explicit service controls and a masked address with a visibility toggle.
 - Document proposed extension APIs, lifecycle and compatibility boundaries for third-party plugins and browser clients.

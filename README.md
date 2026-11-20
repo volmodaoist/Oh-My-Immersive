@@ -87,6 +87,12 @@ The drawing surface suppresses native long-press selection, image dragging and
 context menus so they do not interrupt Pencil input.
 While the service runs, the note header also shows an eraser icon for **Clear ink**. Clearing from either end clears ink on both ends.
 
+The browser toolbar's **Up / Down** buttons scroll the selected Markdown note in
+the main window by half a viewport. You can also use the mouse wheel over the
+background to scroll vertically. Reading and editing modes are supported.
+Scrolling pauses during drawing, and existing ink stays fixed on the window.
+On iPad, tap the toolbar buttons; touch on the drawing surface remains ignored.
+
 Samples stream in batches about every 20ms, so the desktop sees the stroke
 before the pointer is released. Releasing completes the stroke in memory;
 cancelled strokes are discarded. The background

@@ -23,7 +23,7 @@
 | Obsidian 插件间的 TypeScript API | 安装在同一 Obsidian 实例中的其他插件 | 管理服务、控制模式、操作排序与订阅事件 |
 | HTTP / SSE 协议及 OpenAPI 描述 | iPad 页面、独立网页或其他局域网客户端 | 获取画面和快照、上传笔迹、接收同步事件 |
 
-目前已有 `/api/state`、`/api/op`、`/events` 和 `/frame`，但这些是当前客户端的内部
+目前已有 `/api/state`、`/api/op`、`/api/scroll`、`/events` 和 `/frame`，但这些是当前客户端的内部
 协议：没有公开的版本与兼容承诺，也没有对外的 OpenAPI 文档。OpenAPI 可以描述
 HTTP 请求和响应；SSE 的事件名、顺序、补帧与重连规则还需要单独说明。
 
