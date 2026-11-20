@@ -26,7 +26,7 @@ import {
 import { canReorder, ORDER_VERSION, Orders, OrderStore } from "./order";
 import { animateReorder, DragSort } from "./dnd";
 import type { RemoteInk } from "./ink/controller";
-import { InkConnectionModal, type InkDialogLabels } from "./ink/dialog";
+import { InkConnectionPopover, type InkConnectionLabels } from "./ink/popover";
 import { flashInkButton } from "./ink/feedback";
 
 type Language = "auto" | "en" | "zh";
@@ -106,7 +106,7 @@ const DEFAULT_SETTINGS: OhMyImmersiveSettings = {
 
 /* Every user-facing string in one place, so a new language is a matter of
    adding one object rather than hunting through the file. */
-interface Strings extends InkDialogLabels {
+interface Strings extends InkConnectionLabels {
   command: string;
   introName: string;
   disclaimerName: string;
@@ -168,7 +168,10 @@ interface Strings extends InkDialogLabels {
 
 const EN: Strings = {
   inkAddress: "Browser address",
-  inkCopyFailed: "Could not copy. Select the address above and copy it manually.",
+  inkHint: "Draw from a browser on your local network.",
+  inkShowAddress: "Show address",
+  inkHideAddress: "Hide address",
+  inkCopyFailed: "Could not copy. Show the address and copy it manually.",
   inkStopping: "Stopping…",
   inkStopped: "Stopped",
   inkStarting: "Starting…",
@@ -277,7 +280,10 @@ const EN: Strings = {
 
 const ZH: Strings = {
   inkAddress: "浏览器地址",
-  inkCopyFailed: "未能复制，请选中上方地址手动复制。",
+  inkHint: "从同一局域网的浏览器连接，在当前画面上书写。",
+  inkShowAddress: "显示地址",
+  inkHideAddress: "隐藏地址",
+  inkCopyFailed: "未能复制，请显示地址后手动复制。",
   inkStopping: "停止中…",
   inkStopped: "已停止",
   inkStarting: "启动中…",
@@ -517,7 +523,7 @@ export default class OhMyImmersivePlugin extends Plugin {
   private inkGeneration = 0;
   private inkActionBars = new Set<HTMLElement>();
   private buttonsRemoved = false;
-  private inkDialog: InkConnectionModal | null = null;
+  private inkPopover: InkConnectionPopover | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -532,7 +538,7 @@ export default class OhMyImmersivePlugin extends Plugin {
     this.register(() => this.dropSweep());
     this.register(() => { void this.stopInk(); });
     this.register(() => {
-      this.inkDialog?.close();
+      this.inkPopover?.close();
     });
 
     this.registerToggleCommand();
@@ -600,14 +606,40 @@ export default class OhMyImmersivePlugin extends Plugin {
     } });
   }
 
-  async openInk(): Promise<void> {
+  openInk(anchor?: HTMLElement, focus = true): void {
     if (Platform.isMobile) { new Notice(this.t.inkDesktop); return; }
-    const modal = this.showInkDialog();
+    if (!focus && this.inkPopover?.isPinned) return;
+    const target = anchor
+      ?? this.app.workspace.getActiveViewOfType(ItemView)?.containerEl.querySelector<HTMLElement>(`.${INK_BUTTON_CLASS}, .view-header .view-actions`)
+      ?? this.app.workspace.containerEl;
+    if (this.inkPopover?.anchor === target) {
+      if (focus) {
+        this.inkPopover.pin();
+        this.inkPopover.focusAction();
+      }
+      return;
+    }
+    this.inkPopover?.close();
+    const popover = new InkConnectionPopover(target, {
+      connection: () => this.remoteInk?.connection ?? null,
+      starting: () => this.inkStarting,
+      stopping: () => this.inkStopping,
+      start: () => this.startInk(),
+      stop: () => this.stopInk(),
+      clear: () => this.clearInk(),
+      closed: () => { if (this.inkPopover === popover) this.inkPopover = null; },
+    }, this.t);
+    this.inkPopover = popover;
+    popover.open(focus);
+  }
+
+  /** 服务生命周期独立于连接面板；打开面板不会启动服务。 */
+  async startInk(): Promise<void> {
+    if (Platform.isMobile) throw new Error(this.t.inkDesktop);
     if (this.inkStarting || this.inkStopping) return;
     if (!this.remoteInk) {
       this.inkStarting = true;
       const generation = ++this.inkGeneration;
-      modal.resetFeedback();
       this.syncButtons();
       try {
         const { RemoteInk } = await import("./ink/controller");
@@ -620,26 +652,9 @@ export default class OhMyImmersivePlugin extends Plugin {
         this.remoteInk = ink;
       } catch (error: unknown) {
         const occupied = typeof error === "object" && error !== null && "code" in error && error.code === "EADDRINUSE";
-        modal.showError(occupied ? this.t.inkPortBusy : error instanceof Error ? error.message : "无法启动远程书写");
-        return;
-      } finally { this.inkStarting = false; this.syncButtons(); modal.refresh(); }
+        throw new Error(occupied ? this.t.inkPortBusy : error instanceof Error ? error.message : "无法启动远程书写");
+      } finally { this.inkStarting = false; this.syncButtons(); this.inkPopover?.refresh(); }
     }
-    modal.refresh();
-  }
-
-  private showInkDialog(): InkConnectionModal {
-    if (this.inkDialog) return this.inkDialog;
-    const modal = new InkConnectionModal(this.app, {
-      connection: () => this.remoteInk?.connection ?? null,
-      starting: () => this.inkStarting,
-      stopping: () => this.inkStopping,
-      stop: () => this.stopInk(),
-      clear: () => this.clearInk(),
-      closed: () => { this.inkDialog = null; },
-    }, this.t);
-    this.inkDialog = modal;
-    modal.open();
-    return modal;
   }
 
   async stopInk(): Promise<void> {
@@ -649,9 +664,9 @@ export default class OhMyImmersivePlugin extends Plugin {
     this.remoteInk = null;
     this.inkStopping = ink !== null;
     this.syncButtons();
-    this.inkDialog?.refresh();
+    this.inkPopover?.refresh();
     try { await ink?.stop(); }
-    finally { this.inkStopping = false; this.syncButtons(); this.inkDialog?.refresh(); }
+    finally { this.inkStopping = false; this.syncButtons(); this.inkPopover?.refresh(); }
   }
 
   clearInk(): void {
@@ -1439,18 +1454,31 @@ export default class OhMyImmersivePlugin extends Plugin {
       if (!this.inkActionBars.has(bar)) { ink?.remove(); clear?.remove(); ink = null; clear = null; }
       if (!wanted) { ink?.remove(); clear?.remove(); return; }
       if (!ink) {
-        ink = view.addAction("pencil-line", this.t.inkStart, () => {
-          if (ink) flashInkButton(ink);
-          if (this.remoteInk) void this.stopInk();
-          else void this.openInk();
+        ink = view.addAction("pencil-line", this.t.inkConnect, () => {
+          if (!ink) return;
+          flashInkButton(ink);
+          if (this.inkPopover?.anchor === ink && this.inkPopover.isPinned) this.inkPopover.close();
+          else this.openInk(ink);
         });
         ink.addClass(INK_BUTTON_CLASS);
+        ink.setAttribute("aria-haspopup", "dialog");
+        ink.setAttribute("aria-expanded", "false");
+        ink.setAttribute("tabindex", "0");
+        this.registerDomEvent(ink, "pointerenter", () => { if (ink) this.openInk(ink, false); });
+        this.registerDomEvent(ink, "keydown", event => {
+          if (event.key === "ArrowDown" && ink) {
+            event.preventDefault();
+            this.openInk(ink);
+          } else if ((event.key === "Enter" || event.key === " ") && ink && ink.tagName !== "BUTTON") {
+            event.preventDefault();
+            ink.click();
+          }
+        });
       }
       ink.toggleClass("is-active", this.remoteInk !== null);
       const busy = this.inkStarting || this.inkStopping;
       setIcon(ink, "pencil-line");
-      ink.toggleClass(DISABLED_CLASS, busy);
-      ink.setAttribute("aria-label", this.inkStarting ? this.t.inkStarting : this.inkStopping ? this.t.inkStopping : this.remoteInk ? this.t.inkStop : this.t.inkStart);
+      ink.setAttribute("aria-label", this.t.inkConnect);
       ink.setAttribute("aria-busy", String(busy));
       if (!this.remoteInk) { clear?.remove(); return; }
       if (!clear) {
@@ -1463,6 +1491,7 @@ export default class OhMyImmersivePlugin extends Plugin {
       if (!current.has(bar)) bar.querySelectorAll(`.${INK_BUTTON_CLASS}, .${INK_CLEAR_BUTTON_CLASS}`).forEach(button => button.remove());
     }
     this.inkActionBars = current;
+    this.inkPopover?.refresh();
   }
 
   private syncButton(
@@ -1609,7 +1638,7 @@ class OhMyImmersiveSettingTab extends PluginSettingTab {
         desc: t.resetAllOrdersDesc,
         action: () => void this.plugin.resetOrders(),
       },
-      { name: t.inkName, desc: t.inkIntro, action: () => { void this.plugin.openInk(); } },
+      { name: t.inkName, desc: t.inkIntro, action: el => { this.plugin.openInk(el.querySelector<HTMLElement>("button") ?? el); } },
       { name: t.inkButton, control: { type: "toggle", key: "showInkButton" } },
       { name: t.inkPort, desc: t.inkPortDesc, control: { type: "text", key: "inkPort" } },
       { name: t.disclaimerName, desc: t.disclaimer },

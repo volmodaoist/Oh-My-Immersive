@@ -28,7 +28,7 @@ export enum PointerType {
   Touch = "touch",
 }
 
-export enum InkDialogState {
+export enum InkConnectionState {
   Error = "error",
   Running = "running",
   Idle = "idle",
