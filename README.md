@@ -70,10 +70,13 @@ plugin only saves display order; it does not rename or move files.
 
 ### Remote ink (desktop prototype)
 
-The pencil button at the top right of a note starts a LAN drawing service and shows
-the connection address. Click it again to stop. The **Remote ink connection**
-command and the **Remote ink** setting also open the address dialog. Closing
-the dialog keeps the service running.
+Hover over the pencil button at the top right of a note to open the remote ink
+panel. Click to pin or close it. Select **Start remote ink** in the panel to start
+the LAN service, then copy the browser address. The address is masked by default;
+use the eye button to show or hide it. Copying includes the full connection code.
+The **Remote ink connection** command and the **Remote ink** setting open the same
+panel. Click outside or press Escape to close it; the service keeps running until
+you select **Stop remote ink**.
 
 Open the copied address in a browser on the same LAN. It shows the current
 Obsidian window as a background with a drawing layer on top. You can test
@@ -94,9 +97,9 @@ in memory for the current service session. Stopping the service or closing
 Obsidian clears it; a new service starts empty. Refreshing a browser restores
 ink from the running service. The prototype's old `ink.json` is removed on start.
 
-The connection dialog uses theme radius variables and native button components.
+The connection panel uses theme radius variables and native button components.
 Buttons briefly highlight when clicked and keep their original text and icons.
-The dialog stays open after stopping, and service state and errors appear inline.
+The panel stays open after stopping, and service state and errors appear inline.
 The header buttons use the same click feedback.
 
 The port defaults to `8674` and accepts integers from `1024` to `65535`. Changes
@@ -209,6 +212,8 @@ Plugin source uses Obsidian's rules and type-aware TypeScript checks. CLI,
 build and test scripts use standard Node.js JavaScript checks.
 See the [ink module guide](src/ink/README.md) (Chinese) for its protocol and
 responsibilities. Run `npm run format:ink` to format that module.
+See the [plugin API design proposal](docs/plugin-api-design.md) (Chinese) for
+possible extension points. These interfaces are proposed and are not yet public.
 
 ## Releasing a version
 

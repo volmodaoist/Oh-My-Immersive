@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Replace the remote ink modal with a hover and click popover, explicit service controls and a masked address with a visibility toggle.
+- Document proposed extension APIs, lifecycle and compatibility boundaries for third-party plugins and browser clients.
 - Add `make release` and `make release-dry-run` to synchronize versions, validate changes and publish through GitHub Actions.
 - Apply Obsidian lint rules to plugin source and standard Node.js checks to CLI, build and test scripts, with zero warnings required across the repository.
 - Document GitHub automation, checked commits, release commands and recovery procedures in `.github/README.md`.
