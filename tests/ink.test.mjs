@@ -3,6 +3,9 @@ import test from "node:test";
 import vm from "node:vm";
 import { createRequire } from "node:module";
 import { build } from "esbuild";
+import { request } from "node:http";
+import { connect } from "node:net";
+import { once } from "node:events";
 const require = createRequire(import.meta.url);
 const output = await build({
   stdin: { contents: 'export * from "./src/ink/protocol"; export * from "./src/ink/engine"; export * from "./src/ink/server";', resolveDir: process.cwd(), loader: "ts" },
@@ -152,4 +155,85 @@ test("stopping the service clears temporary ink and a new service starts empty",
   await next.start(0);
   assert.equal(next.store.snapshot().strokes.length, 0);
   await next.stop();
+});
+
+async function stopPromptly(server) {
+  let timer;
+  try {
+    await Promise.race([
+      server.stop(),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Stop waited for an unfinished browser request")), 1000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+test("stopping closes connected viewers and unfinished frame requests, releasing the port", { timeout: 5000 }, async t => {
+  let enteredFrame;
+  let finishFrame;
+  const entered = new Promise(resolve => { enteredFrame = resolve; });
+  const frame = new Promise(resolve => { finishFrame = resolve; });
+  const server = new InkServer({ frame: () => { enteredFrame(); return frame; } });
+  await server.start(0);
+  const port = server.port;
+  const base = `http://127.0.0.1:${port}`;
+  const suffix = `?code=${server.code}`;
+  const frameAbort = new AbortController();
+  const streamAbort = new AbortController();
+  let frameRequest;
+  t.after(async () => {
+    frameAbort.abort();
+    streamAbort.abort();
+    finishFrame(Buffer.from("late frame"));
+    await frameRequest;
+    await server.stop();
+  });
+  const response = await fetch(base + "/events" + suffix, { signal: streamAbort.signal });
+  await response.body.getReader().read();
+  frameRequest = fetch(base + "/frame" + suffix, { signal: frameAbort.signal }).catch(() => null);
+  await entered;
+  server.store.apply({ t: "begin", stroke: stroke() });
+
+  // The capture deliberately stays pending until teardown; clients do not disconnect first.
+  await stopPromptly(server);
+  assert.equal(server.store.strokes.size, 0);
+  await frameRequest;
+  const next = new InkServer({ frame: async () => Buffer.from("new frame") });
+  await next.start(port);
+  t.after(() => next.stop());
+  assert.equal(next.store.strokes.size, 0);
+  await server.stop();
+  await next.stop();
+});
+
+test("stopping closes unfinished uploads and connections that have not sent headers", { timeout: 5000 }, async t => {
+  const server = new InkServer({ frame: async () => Buffer.from("test frame") });
+  await server.start(0);
+  const upload = request(`http://127.0.0.1:${server.port}/api/op?code=${server.code}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Content-Length": "4096" },
+  });
+  upload.on("error", () => {});
+  const uploadClosed = new Promise(resolve => upload.once("close", resolve));
+  const idle = connect(server.port, "127.0.0.1");
+  idle.on("error", () => {});
+  const idleClosed = new Promise(resolve => idle.once("close", resolve));
+  t.after(async () => {
+    upload.destroy();
+    idle.destroy();
+    await server.stop();
+  });
+  upload.write('{"t":"clear"');
+  await once(idle, "connect");
+  const state = await fetch(`http://127.0.0.1:${server.port}/api/state?code=${server.code}`);
+  assert.equal(state.status, 200);
+  await state.json();
+
+  // Neither client completes its request; stopping must close both sockets.
+  await stopPromptly(server);
+  await Promise.all([uploadClosed, idleClosed]);
+  assert.equal(server.store.strokes.size, 0);
 });

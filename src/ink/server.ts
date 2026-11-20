@@ -100,6 +100,7 @@ export class InkServer {
     }
   }
 
+  /** 停服主动断开所有 HTTP 连接，不等待截图完成或客户端上传剩余内容。 */
   async stop(): Promise<void> {
     this.clear();
     const server = this.server;
@@ -111,7 +112,9 @@ export class InkServer {
     if (server) {
       await new Promise<void>((resolve) => {
         server.close(() => resolve());
-        server.closeIdleConnections();
+        // close() 停止接收新连接；随后连同正在处理请求的连接一起关闭。
+        // 只关闭空闲连接会让未完成的截图、上传或慢客户端一直拖住停服。
+        server.closeAllConnections();
       });
     }
   }
@@ -122,6 +125,10 @@ export class InkServer {
     type: string,
     body: string | Uint8Array,
   ): void {
+    // 截图可能在停服后才返回；已关闭的响应不再尝试写入。
+    if (res.destroyed || res.writableEnded) {
+      return;
+    }
     res.writeHead(status, {
       "Content-Type": type,
       "Cache-Control": "no-store",
