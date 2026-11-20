@@ -1,4 +1,5 @@
 import { InkServer } from "./server";
+import type { MarkdownScrollHost } from "./scroll-host";
 interface Bounds {
   x: number;
   y: number;
@@ -43,8 +44,12 @@ export class RemoteInk {
   private framePromise: Promise<Uint8Array> | null = null;
   private frameTime = 0;
   private stopped = false;
-  constructor() {
-    this.server = new InkServer({ frame: () => this.capture() });
+  constructor(scrollHost: MarkdownScrollHost) {
+    this.server = new InkServer({
+      frame: () => this.capture(),
+      scrollState: () => scrollHost.getState(),
+      scroll: (request) => scrollHost.scroll(request),
+    });
   }
   get connection(): {
     local: string;

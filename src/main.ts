@@ -2,6 +2,7 @@ import {
   addIcon,
   App,
   ItemView,
+  MarkdownView,
   Notice,
   Platform,
   Plugin,
@@ -28,6 +29,7 @@ import { animateReorder, DragSort } from "./dnd";
 import type { RemoteInk } from "./ink/controller";
 import { InkConnectionPopover, type InkConnectionLabels } from "./ink/popover";
 import { flashInkButton } from "./ink/feedback";
+import { MarkdownScrollHost } from "./ink/scroll-host";
 
 type Language = "auto" | "en" | "zh";
 
@@ -646,7 +648,13 @@ export default class OhMyImmersivePlugin extends Plugin {
         const path = `${this.manifest.dir ?? `${this.app.vault.configDir}/plugins/${this.manifest.id}`}/ink.json`;
         // Retire the prototype's old persisted ink. New strokes stay in RAM.
         if (await this.app.vault.adapter.exists(path)) await this.app.vault.adapter.remove(path);
-        const ink = new RemoteInk();
+        const ink = new RemoteInk(new MarkdownScrollHost(() => {
+          const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+          if (!view
+            || view.containerEl.ownerDocument !== this.app.workspace.containerEl.ownerDocument
+            || !view.containerEl.closest(".workspace-split.mod-root")) return null;
+          return view;
+        }));
         await ink.start(this.settings.inkPort);
         if (generation !== this.inkGeneration) { await ink.stop(); return; }
         this.remoteInk = ink;

@@ -46,12 +46,42 @@ export enum InkRoute {
   Events = "/events",
   Frame = "/frame",
   Operation = "/api/op",
+  Scroll = "/api/scroll",
+}
+
+/** 滚动回传的结果，不混入笔迹操作或 SSE revision。 */
+export enum ScrollResult {
+  Applied = "applied",
+  Unavailable = "unavailable",
+  Stale = "stale",
+  Busy = "busy",
+}
+
+export enum WheelDeltaMode {
+  Pixel = 0,
+  Line = 1,
+  Page = 2,
+}
+
+/** 与 Obsidian Markdown 模式的值对应，只在滚动适配层使用。 */
+export enum MarkdownScrollMode {
+  Source = "source",
+  Preview = "preview",
 }
 const drawingTools = new Set<string>(Object.values(DrawingTool));
 const operationTypes = new Set<string>(Object.values(InkOperationType));
 const pointerTypes = new Set<string>(Object.values(PointerType));
 const httpMethods = new Set<string>(Object.values(HttpMethod));
 const routes = new Set<string>(Object.values(InkRoute));
+const wheelDeltaModes = new Set<number>([
+  WheelDeltaMode.Pixel,
+  WheelDeltaMode.Line,
+  WheelDeltaMode.Page,
+]);
+
+export function parseWheelDeltaMode(value: number): WheelDeltaMode | null {
+  return wheelDeltaModes.has(value) ? value : null;
+}
 
 /** DOM 和网络输入仍是字符串，只有验证后才能进入枚举类型。 */
 export function parseDrawingTool(value: unknown): DrawingTool | null {

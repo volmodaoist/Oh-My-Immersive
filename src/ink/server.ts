@@ -3,6 +3,7 @@ import {
   InkRoute,
   InkStreamEvent,
   InkOperationType,
+  ScrollResult,
   parseHttpMethod,
   parseInkRoute,
 } from "./enums";
@@ -24,9 +25,16 @@ import {
 } from "./protocol";
 import { INK_PAGE } from "./page";
 import clientSource from "remote-ink-client";
+import {
+  parseScrollRequest,
+  type ScrollRequest,
+  type ScrollState,
+} from "./scroll";
 
 export interface InkServerHost {
   frame(): Promise<Uint8Array>;
+  scrollState?(): ScrollState;
+  scroll?(request: ScrollRequest): ScrollResult;
 }
 
 /** 只共享当前画面与内存笔迹；状态端点需要本次服务的随机连接码。 */
@@ -222,7 +230,17 @@ export class InkServer {
         });
       } else if (method === HttpMethod.Get && route === InkRoute.Frame) {
         this.respond(res, 200, "image/jpeg", await this.host.frame());
-      } else if (method === HttpMethod.Post && route === InkRoute.Operation) {
+      } else if (method === HttpMethod.Get && route === InkRoute.Scroll) {
+        this.respond(
+          res,
+          200,
+          "application/json",
+          JSON.stringify(this.host.scrollState?.() ?? { target: null }),
+        );
+      } else if (
+        method === HttpMethod.Post &&
+        (route === InkRoute.Operation || route === InkRoute.Scroll)
+      ) {
         if (!req.headers["content-type"]?.startsWith("application/json")) {
           throw new Error("请求必须为 JSON");
         }
@@ -234,14 +252,38 @@ export class InkServer {
             ? chunk
             : Buffer.from(chunk as Uint8Array);
           size += buffer.length;
-          if (size > 196608) {
-            throw new Error("笔迹请求过大");
+          if (size > (route === InkRoute.Scroll ? 1024 : 196608)) {
+            throw new Error(
+              route === InkRoute.Scroll ? "滚动请求过大" : "笔迹请求过大",
+            );
           }
           chunks.push(buffer);
         }
-        const op = parseOp(
-          JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown,
-        );
+        // 停服或客户端取消后，迟到的请求不再产生笔迹或滚动副作用。
+        if (!this.server || res.destroyed) {
+          return;
+        }
+        const payload = JSON.parse(
+          Buffer.concat(chunks).toString("utf8"),
+        ) as unknown;
+        if (route === InkRoute.Scroll) {
+          const request = parseScrollRequest(payload);
+          // 所有浏览器共享画面，任一未完成的笔迹都会暂停滚动。
+          const drawing = [...this.store.strokes.values()].some(
+            (stroke) => !stroke.complete,
+          );
+          const result = drawing
+            ? ScrollResult.Busy
+            : (this.host.scroll?.(request) ?? ScrollResult.Unavailable);
+          this.respond(
+            res,
+            200,
+            "application/json",
+            JSON.stringify({ result }),
+          );
+          return;
+        }
+        const op = parseOp(payload);
         if (this.store.apply(op)) {
           this.broadcast(InkStreamEvent.Operation, {
             revision: this.store.revision,
